@@ -39,13 +39,36 @@ function createGlowTexture(size = 128) {
   return texture;
 }
 
+function createRingTexture(size = 256) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+
+  const center = size / 2;
+  const gradient = context.createRadialGradient(center, center, size * 0.18, center, center, center);
+  gradient.addColorStop(0, "rgba(255,255,255,0)");
+  gradient.addColorStop(0.48, "rgba(255,255,255,0)");
+  gradient.addColorStop(0.58, "rgba(255,255,255,0.78)");
+  gradient.addColorStop(0.68, "rgba(255,255,255,0.16)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function DeepSpaceBackdrop() {
   const glowTexture = useMemo(() => createGlowTexture(128), []);
   const nearStarsRef = useRef<THREE.Points>(null);
   const farStarsRef = useRef<THREE.Points>(null);
 
   const farStars = useMemo(() => {
-    const count = 520;
+    const count = 180;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const blue = new THREE.Color("#9bb7ff");
@@ -74,7 +97,7 @@ function DeepSpaceBackdrop() {
   }, []);
 
   const nearStars = useMemo(() => {
-    const count = 130;
+    const count = 45;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const color = new THREE.Color();
@@ -151,9 +174,11 @@ function GalaxyField({
   const pointsRef = useRef<THREE.Points>(null);
   const glowRef = useRef<THREE.Points>(null);
   const selectedGlowRef = useRef<THREE.Sprite>(null);
+  const selectedRippleRef = useRef<THREE.Sprite>(null);
   const normalizedQuery = query.trim().toLowerCase();
 
   const starTexture = useMemo(() => createGlowTexture(128), []);
+  const ringTexture = useMemo(() => createRingTexture(256), []);
 
   const geometry = useMemo(() => {
     const positions = new Float32Array(stars.length * 3);
@@ -215,6 +240,11 @@ function GalaxyField({
       const pulse = 1 + Math.sin(t * 4.2) * 0.14;
       selectedGlow.scale.setScalar(1.95 * pulse);
     }
+    if (selectedRippleRef.current) {
+      const ripple = 2.4 + ((t * 0.9) % 1) * 3.2;
+      selectedRippleRef.current.scale.setScalar(ripple);
+      selectedRippleRef.current.material.opacity = 0.5 * (1 - ((t * 0.9) % 1));
+    }
   });
 
   function handleClick(event: ThreeEvent<MouseEvent>) {
@@ -257,23 +287,132 @@ function GalaxyField({
         />
       </points>
       {stars[selectedId] ? (
-        <sprite
-          ref={selectedGlowRef}
-          position={[stars[selectedId].x, stars[selectedId].y, stars[selectedId].z]}
-          renderOrder={3}
-        >
-          <spriteMaterial
-            map={starTexture}
-            color="#fff6cf"
-            transparent
-            opacity={0.95}
-            depthWrite={false}
-            depthTest={false}
-            toneMapped={false}
-            blending={THREE.AdditiveBlending}
-          />
-        </sprite>
+        <>
+          <sprite
+            ref={selectedGlowRef}
+            position={[stars[selectedId].x, stars[selectedId].y, stars[selectedId].z]}
+            renderOrder={4}
+          >
+            <spriteMaterial
+              map={starTexture}
+              color="#fff6cf"
+              transparent
+              opacity={0.95}
+              depthWrite={false}
+              depthTest={false}
+              toneMapped={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </sprite>
+          <sprite
+            ref={selectedRippleRef}
+            position={[stars[selectedId].x, stars[selectedId].y, stars[selectedId].z]}
+            renderOrder={3}
+          >
+            <spriteMaterial
+              map={ringTexture}
+              color={stars[selectedId].color}
+              transparent
+              opacity={0.42}
+              depthWrite={false}
+              depthTest={false}
+              toneMapped={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </sprite>
+        </>
       ) : null}
+    </group>
+  );
+}
+
+function SignatureStars({
+  stars,
+  selectedId,
+  onSelect
+}: {
+  stars: GalaxyStar[];
+  selectedId: number;
+  onSelect: (star: GalaxyStar) => void;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const texture = useMemo(() => createGlowTexture(192), []);
+  const signatureStars = useMemo(
+    () =>
+      stars.filter((star) => star.intensity > 0.62 || Math.abs(star.score) > 0.68),
+    [stars]
+  );
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    groupRef.current.rotation.y = clock.getElapsedTime() * 0.012;
+  });
+
+  return (
+    <group ref={groupRef}>
+      {signatureStars.map((star) => {
+        const scale = 0.62 + star.intensity * 0.95 + (star.id === selectedId ? 0.55 : 0);
+        return (
+          <sprite
+            key={star.id}
+            position={[star.x, star.y, star.z]}
+            scale={[scale, scale, 1]}
+            renderOrder={2}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelect(star);
+            }}
+          >
+            <spriteMaterial
+              map={texture}
+              color={star.color}
+              transparent
+              opacity={star.id === selectedId ? 0.92 : 0.5}
+              depthWrite={false}
+              toneMapped={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </sprite>
+        );
+      })}
+    </group>
+  );
+}
+
+function ReadingPath({ stars }: { stars: GalaxyStar[] }) {
+  const lineObject = useMemo(() => {
+    if (stars.length < 2) return null;
+    const sampled = stars.filter((_, index) => {
+      const step = Math.max(1, Math.floor(stars.length / 90));
+      return index % step === 0 || index === stars.length - 1;
+    });
+    const points = sampled.map((star) => new THREE.Vector3(star.x, star.y, star.z));
+    const curve = new THREE.CatmullRomCurve3(points, false, "centripetal", 0.45);
+    const geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(Math.max(40, sampled.length * 4)));
+    const material = new THREE.LineBasicMaterial({
+      color: "#ffe6a3",
+      transparent: true,
+      opacity: 0.16,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const line = new THREE.Line(geometry, material);
+    line.renderOrder = 1;
+    return line;
+  }, [stars]);
+
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    groupRef.current.rotation.y = clock.getElapsedTime() * 0.012;
+  });
+
+  if (!lineObject) return null;
+
+  return (
+    <group ref={groupRef}>
+      <primitive object={lineObject} />
     </group>
   );
 }
@@ -281,7 +420,7 @@ function GalaxyField({
 function NebulaCloud() {
   const texture = useMemo(() => createGlowTexture(128), []);
   const geometry = useMemo(() => {
-    const count = 2200;
+    const count = 260;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const pink = new THREE.Color("#ff79d7");
@@ -347,10 +486,10 @@ function NebulaCloud() {
   return (
     <points geometry={geometry} renderOrder={-1}>
       <pointsMaterial
-        size={0.78}
+        size={0.56}
         sizeAttenuation
         transparent
-        opacity={0.12}
+        opacity={0.045}
         map={texture}
         vertexColors
         depthWrite={false}
@@ -437,11 +576,16 @@ function SpiralGuide() {
 }
 
 export default function EmotionGalaxy3D() {
-  const stars = useMemo(() => createGalaxyStars(420), []);
+  const stars = useMemo(() => createGalaxyStars(), []);
   const [selected, setSelected] = useState(stars[0]);
+  const [detailOpen, setDetailOpen] = useState(true);
   const [query, setQuery] = useState("");
   const [autoRotate, setAutoRotate] = useState(true);
   const intensity = Math.round((Math.abs(selected.score) * 0.76 + 0.24) * 100);
+  const selectStar = (star: GalaxyStar) => {
+    setSelected(star);
+    setDetailOpen(true);
+  };
 
   return (
     <main className="galaxy-page">
@@ -471,7 +615,11 @@ export default function EmotionGalaxy3D() {
       </section>
 
       <div className="scene">
-        <Canvas camera={{ position: [0, 9, 26], fov: 48 }} dpr={[1, 2]}>
+        <Canvas
+          camera={{ position: [0, 9, 26], fov: 48 }}
+          dpr={[1, 2]}
+          onPointerMissed={() => setDetailOpen(false)}
+        >
           <color attach="background" args={["#060611"]} />
           <fog attach="fog" args={["#090817", 34, 72]} />
           <ambientLight intensity={0.7} />
@@ -486,8 +634,9 @@ export default function EmotionGalaxy3D() {
             stars={stars}
             query={query}
             selectedId={selected.id}
-            onSelect={setSelected}
+            onSelect={selectStar}
           />
+          <SignatureStars stars={stars} selectedId={selected.id} onSelect={selectStar} />
           <OrbitControls
             autoRotate={autoRotate}
             autoRotateSpeed={0.45}
@@ -508,8 +657,12 @@ export default function EmotionGalaxy3D() {
           <strong>{stars.length}</strong>
         </div>
         <div>
-          <span>章节位置</span>
-          <strong>第 {selected.chapter} 章</strong>
+          <span>章节</span>
+          <strong>第 {selected.chapterIndex} 章</strong>
+        </div>
+        <div>
+          <span>章节名</span>
+          <strong>{selected.chapterTitle}</strong>
         </div>
         <div>
           <span>情绪强度</span>
@@ -517,7 +670,7 @@ export default function EmotionGalaxy3D() {
         </div>
       </aside>
 
-      <article className="detail" aria-live="polite">
+      <article className={`detail${detailOpen ? "" : " is-collapsed"}`} aria-live="polite">
         <div className="detail-meta">
           <span>第 {selected.id + 1} 句</span>
           <span>

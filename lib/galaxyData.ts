@@ -1,3 +1,5 @@
+import emotionRecords from "@/data/book-emotions.json";
+
 export type EmotionKind =
   | "温暖"
   | "遗憾"
@@ -16,6 +18,10 @@ export type SourceLine = {
   text: string;
   score: number;
   emotion: EmotionKind;
+  intensity: number;
+  chapterIndex: number;
+  chapterTitle: string;
+  chapterPosition: number;
 };
 
 export type GalaxyStar = SourceLine & {
@@ -26,22 +32,60 @@ export type GalaxyStar = SourceLine & {
   radius: number;
   color: string;
   chapter: number;
+  chapterTitle: string;
+  chapterPosition: number;
 };
 
-const sourceLines: SourceLine[] = [
-  { text: "她在雨停之后推开窗，街灯像刚醒来的金子。", score: 0.66, emotion: "温暖" },
-  { text: "那封没有寄出的信，被夹在旧书最暗的一页。", score: -0.42, emotion: "遗憾" },
-  { text: "他们在桥上笑起来，风把沉默吹得很远。", score: 0.72, emotion: "喜悦" },
-  { text: "夜色压低了屋檐，连钟声也不敢惊动谁。", score: -0.36, emotion: "孤独" },
-  { text: "他忽然明白，所谓告别只是另一种抵达。", score: 0.18, emotion: "释然" },
-  { text: "火车穿过山谷，所有窗户都闪着短暂的光。", score: 0.34, emotion: "希望" },
-  { text: "她没有回头，像把一整座城留在身后。", score: -0.64, emotion: "离别" },
-  { text: "孩子把贝壳贴在耳边，听见夏天仍在里面。", score: 0.81, emotion: "童真" },
-  { text: "门外的脚步停住了，空气紧得像一根弦。", score: -0.78, emotion: "紧张" },
-  { text: "晨雾散开时，河面露出安静的银色。", score: 0.22, emotion: "平静" },
-  { text: "他说没关系，可指节已经攥得发白。", score: -0.7, emotion: "压抑" },
-  { text: "月亮升起，所有失物都有了温柔的轮廓。", score: 0.58, emotion: "温柔" }
+type EmotionRecord = {
+  text: string;
+  emotion_score: number;
+  emotion_type: string;
+  emotion_intensity?: number;
+  chapter_index?: number;
+  chapter_title?: string;
+  chapter_position?: number;
+};
+
+const knownEmotions: EmotionKind[] = [
+  "温暖",
+  "遗憾",
+  "喜悦",
+  "孤独",
+  "释然",
+  "希望",
+  "离别",
+  "童真",
+  "紧张",
+  "平静",
+  "压抑",
+  "温柔"
 ];
+
+const fallbackLines: SourceLine[] = [
+  { text: "她在雨停之后推开窗，街灯像刚醒来的金子。", score: 0.66, emotion: "温暖", intensity: 0.7, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 0 },
+  { text: "那封没有寄出的信，被夹在旧书最暗的一页。", score: -0.42, emotion: "遗憾", intensity: 0.52, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 1 },
+  { text: "他们在桥上笑起来，风把沉默吹得很远。", score: 0.72, emotion: "喜悦", intensity: 0.74, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 2 },
+  { text: "夜色压低了屋檐，连钟声也不敢惊动谁。", score: -0.36, emotion: "孤独", intensity: 0.48, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 3 },
+  { text: "他忽然明白，所谓告别只是另一种抵达。", score: 0.18, emotion: "释然", intensity: 0.44, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 4 }
+];
+
+function normalizeEmotion(emotion: string): EmotionKind {
+  return knownEmotions.includes(emotion as EmotionKind) ? (emotion as EmotionKind) : "平静";
+}
+
+const sourceLines: SourceLine[] = ((emotionRecords as EmotionRecord[]) || [])
+  .filter((record) => record.text && typeof record.emotion_score === "number")
+  .map((record) => ({
+    text: record.text,
+    score: clamp(record.emotion_score, -1, 1),
+    emotion: normalizeEmotion(record.emotion_type),
+    intensity: clamp(record.emotion_intensity ?? Math.abs(record.emotion_score), 0, 1),
+    chapterIndex: record.chapter_index ?? 1,
+    chapterTitle: record.chapter_title ?? "未命名章节",
+    chapterPosition: record.chapter_position ?? 0
+  }));
+
+const activeSourceLines = sourceLines.length > 0 ? sourceLines : fallbackLines;
 
 function hash(seed: number) {
   const value = Math.sin(seed * 999.91) * 10000;
@@ -105,12 +149,11 @@ export function colorForEmotion(score: number, emotion: EmotionKind) {
   return hslToHex(hue, saturation, lightness);
 }
 
-export function createGalaxyStars(total = 840): GalaxyStar[] {
+export function createGalaxyStars(total = activeSourceLines.length): GalaxyStar[] {
   return Array.from({ length: total }, (_, index) => {
     const t = total === 1 ? 0 : index / (total - 1);
-    const source = sourceLines[index % sourceLines.length];
-    const wave = Math.sin(index * 0.071) * 0.28 + Math.sin(index * 0.019) * 0.18;
-    const score = clamp(source.score + wave, -1, 1);
+    const source = activeSourceLines[index % activeSourceLines.length];
+    const score = clamp(source.score, -1, 1);
     const localHueJitter = (hash(index + 29) - 0.5) * 18;
     const turns = 1.85;
     const clusterCenters = [0.1, 0.2, 0.34, 0.52, 0.68, 0.83, 0.94];
@@ -143,10 +186,14 @@ export function createGalaxyStars(total = 840): GalaxyStar[] {
       id: index,
       text: source.text,
       emotion: source.emotion,
+      intensity: source.intensity,
       score,
       color: colorForEmotion(clamp(score + localHueJitter / 160, -1, 1), source.emotion),
-      chapter: Math.floor(t * 18) + 1,
-      radius,
+      chapter: source.chapterIndex,
+      chapterIndex: source.chapterIndex,
+      chapterTitle: source.chapterTitle,
+      chapterPosition: source.chapterPosition,
+      radius: radius * lerp(0.82, 1.32, source.intensity),
       x: Math.cos(angle) * (spineRadius + armNoise + voidPush) + Math.cos(angle + Math.PI / 2) * thickness * side,
       y: vertical,
       z: Math.sin(angle) * (spineRadius + armNoise + voidPush) + Math.sin(angle + Math.PI / 2) * thickness * side
