@@ -3,13 +3,26 @@
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, ThreeEvent, useFrame } from "@react-three/fiber";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { createGalaxyStars, GalaxyStar } from "@/lib/galaxyData";
 
 const baseColor = new THREE.Color();
 const fadedColor = new THREE.Color("#8d93a3");
 const highlightColor = new THREE.Color("#fff7d6");
+
+function easeOutCubic(value: number) {
+  return 1 - Math.pow(1 - value, 3);
+}
+
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function getIntroProgress(t: number, start: number | null) {
+  if (start === null) return 0;
+  return easeOutCubic(clamp01((t - start - 3.1) / 4.2));
+}
 
 function hash(seed: number) {
   const value = Math.sin(seed * 812.71) * 10000;
@@ -163,14 +176,17 @@ function GalaxyField({
   stars,
   query,
   selectedId,
-  onSelect
+  onSelect,
+  introActive
 }: {
   stars: GalaxyStar[];
   query: string;
   selectedId: number;
   onSelect: (star: GalaxyStar) => void;
+  introActive: boolean;
 }) {
   const groupRef = useRef<THREE.Group>(null);
+  const introStartRef = useRef<number | null>(null);
   const pointsRef = useRef<THREE.Points>(null);
   const glowRef = useRef<THREE.Points>(null);
   const selectedGlowRef = useRef<THREE.Sprite>(null);
@@ -235,7 +251,12 @@ function GalaxyField({
     const group = groupRef.current;
     const selectedGlow = selectedGlowRef.current;
     const t = clock.getElapsedTime();
-    if (group) group.rotation.y = t * 0.012;
+    if (introStartRef.current === null) introStartRef.current = t;
+    const introProgress = introActive ? getIntroProgress(t, introStartRef.current) : 1;
+    if (group) {
+      group.rotation.y = t * 0.012 + (1 - introProgress) * 1.3;
+      group.scale.setScalar(0.08 + introProgress * 0.92);
+    }
     if (selectedGlow) {
       const pulse = 1 + Math.sin(t * 4.2) * 0.14;
       selectedGlow.scale.setScalar(1.95 * pulse);
@@ -329,13 +350,16 @@ function GalaxyField({
 function SignatureStars({
   stars,
   selectedId,
-  onSelect
+  onSelect,
+  introActive
 }: {
   stars: GalaxyStar[];
   selectedId: number;
   onSelect: (star: GalaxyStar) => void;
+  introActive: boolean;
 }) {
   const groupRef = useRef<THREE.Group>(null);
+  const introStartRef = useRef<number | null>(null);
   const texture = useMemo(() => createGlowTexture(192), []);
   const signatureStars = useMemo(
     () =>
@@ -350,7 +374,11 @@ function SignatureStars({
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
-    groupRef.current.rotation.y = clock.getElapsedTime() * 0.012;
+    const t = clock.getElapsedTime();
+    if (introStartRef.current === null) introStartRef.current = t;
+    const introProgress = introActive ? getIntroProgress(t, introStartRef.current) : 1;
+    groupRef.current.rotation.y = t * 0.012 + (1 - introProgress) * 1.3;
+    groupRef.current.scale.setScalar(0.08 + introProgress * 0.92);
   });
 
   return (
@@ -426,8 +454,11 @@ function ReadingPath({ stars }: { stars: GalaxyStar[] }) {
   );
 }
 
-function NebulaCloud() {
+function NebulaCloud({ introActive }: { introActive: boolean }) {
   const texture = useMemo(() => createGlowTexture(128), []);
+  const groupRef = useRef<THREE.Group>(null);
+  const materialRef = useRef<THREE.PointsMaterial>(null);
+  const introStartRef = useRef<number | null>(null);
   const geometry = useMemo(() => {
     const count = 260;
     const positions = new Float32Array(count * 3);
@@ -489,23 +520,32 @@ function NebulaCloud() {
 
   useFrame(({ clock }) => {
     const elapsed = clock.getElapsedTime();
-    geometry.rotateY(0.00008 + Math.sin(elapsed * 0.3) * 0.00002);
+    if (introStartRef.current === null) introStartRef.current = elapsed;
+    const introProgress = introActive ? getIntroProgress(elapsed, introStartRef.current) : 1;
+    if (groupRef.current) {
+      groupRef.current.rotation.y = elapsed * 0.006 + (1 - introProgress) * 0.8;
+      groupRef.current.scale.setScalar(0.12 + introProgress * 0.88);
+    }
+    if (materialRef.current) materialRef.current.opacity = 0.045 * introProgress;
   });
 
   return (
-    <points geometry={geometry} renderOrder={-1}>
-      <pointsMaterial
-        size={0.56}
-        sizeAttenuation
-        transparent
-        opacity={0.045}
-        map={texture}
-        vertexColors
-        depthWrite={false}
-        toneMapped={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </points>
+    <group ref={groupRef}>
+      <points geometry={geometry} renderOrder={-1}>
+        <pointsMaterial
+          ref={materialRef}
+          size={0.56}
+          sizeAttenuation
+          transparent
+          opacity={0.045}
+          map={texture}
+          vertexColors
+          depthWrite={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </points>
+    </group>
   );
 }
 
@@ -540,7 +580,9 @@ function CoreGlow() {
   );
 }
 
-function SpiralGuide() {
+function SpiralGuide({ introActive }: { introActive: boolean }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const introStartRef = useRef<number | null>(null);
   const lines = useMemo(() => {
     return Array.from({ length: 3 }, (_, arm) => {
       const start = [0.08, 0.18, 0.3][arm];
@@ -566,8 +608,18 @@ function SpiralGuide() {
     });
   }, []);
 
+  useFrame(({ clock }) => {
+    const elapsed = clock.getElapsedTime();
+    if (introStartRef.current === null) introStartRef.current = elapsed;
+    const introProgress = introActive ? getIntroProgress(elapsed, introStartRef.current) : 1;
+    if (groupRef.current) {
+      groupRef.current.rotation.y = elapsed * 0.006 + (1 - introProgress) * 0.8;
+      groupRef.current.scale.setScalar(0.12 + introProgress * 0.88);
+    }
+  });
+
   return (
-    <group>
+    <group ref={groupRef}>
       {lines.map((geometry, index) => (
         <line key={index}>
           <primitive object={geometry} attach="geometry" />
@@ -590,6 +642,7 @@ export default function EmotionGalaxy3D() {
   const [detailOpen, setDetailOpen] = useState(true);
   const [query, setQuery] = useState("");
   const [autoRotate, setAutoRotate] = useState(true);
+  const [introActive, setIntroActive] = useState(true);
   const normalizedQuery = query.trim().toLowerCase();
   const matches = useMemo(
     () =>
@@ -614,13 +667,18 @@ export default function EmotionGalaxy3D() {
     selectStar(matches[nextIndex]);
   };
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setIntroActive(false), 7600);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
-    <main className="galaxy-page">
+    <main className={`galaxy-page${introActive ? " is-intro" : ""}`}>
       <section className="hud" aria-label="控制面板">
         <div className="brand">
           <span className="brand-light" />
           <div>
-            <h1>书名 情绪银河</h1>
+            <h1>龙族 火之晨曦</h1>
             <p>3D 星河中的每一颗光，都是一句原文。</p>
           </div>
         </div>
@@ -682,15 +740,21 @@ export default function EmotionGalaxy3D() {
           <Stars radius={80} depth={40} count={2600} factor={5} saturation={0.4} fade speed={0.22} />
           <DeepSpaceBackdrop />
           <CoreGlow />
-          <NebulaCloud />
-          <SpiralGuide />
+          <NebulaCloud introActive={introActive} />
+          <SpiralGuide introActive={introActive} />
           <GalaxyField
             stars={stars}
             query={query}
             selectedId={selected.id}
             onSelect={selectStar}
+            introActive={introActive}
           />
-          <SignatureStars stars={stars} selectedId={selected.id} onSelect={selectStar} />
+          <SignatureStars
+            stars={stars}
+            selectedId={selected.id}
+            onSelect={selectStar}
+            introActive={introActive}
+          />
           <OrbitControls
             autoRotate={autoRotate}
             autoRotateSpeed={0.45}
@@ -753,6 +817,12 @@ export default function EmotionGalaxy3D() {
       </article>
 
       <div className="hint">拖拽旋转 · 滚轮缩放 · 点击星星</div>
+      <section className="intro" aria-hidden={!introActive}>
+        <div className="intro-orbit"></div>
+        <p>火之晨曦</p>
+        <h2>龙族</h2>
+        <span>你年少的时候，是否有过孤独而热血的梦</span>
+      </section>
     </main>
   );
 }
