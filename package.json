@@ -1,0 +1,46 @@
+{
+  "name": "emotion-galaxy",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3000",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1 --port 3000",
+    "lint": "next lint",
+    "data:split": "node scripts/split-text.mjs",
+    "data:split:sentences": "node scripts/split-text.mjs --sentences",
+    "data:split:chunks": "node scripts/split-text.mjs --chunks",
+    "data:emotion": "node scripts/analyze-emotions.mjs",
+    "data:emotion:curated": "node scripts/curate-chapter-emotions.mjs",
+    "data:tag:chapter1": "node scripts/tag-current-chapter.mjs 1 卡塞尔之门",
+    "data:add:chapter2": "node scripts/add-chapter.mjs data/chapters/chapter-02.txt 2 黄金瞳",
+    "data:add:chapter3": "node scripts/add-chapter.mjs data/chapters/chapter-03.txt 3 恺撒",
+    "data:add:chapter4": "node scripts/add-chapter.mjs data/chapters/chapter-04.txt 4 青铜城",
+    "data:add:chapter5": "node scripts/add-chapter.mjs data/chapters/chapter-05.txt 5 龙影",
+    "data:add:chapter6": "node scripts/add-chapter.mjs data/chapters/chapter-06.txt 6 星与花",
+    "data:add:chapter7": "node scripts/add-chapter.mjs data/chapters/chapter-07.txt 7 弟弟",
+    "data:add:chapter8": "node scripts/add-chapter.mjs data/chapters/chapter-08.txt 8 哥哥",
+    "data:add:chapter9": "node scripts/add-chapter.mjs data/chapters/chapter-09.txt 9 龙墓",
+    "data:add:chapter10": "node scripts/add-chapter.mjs data/chapters/chapter-10.txt 10 七宗罪",
+    "data:tag:dragon": "node scripts/tag-dragon-motifs.mjs",
+    "data:emotion:ai": "node scripts/analyze-ai-emotions.mjs",
+    "data:build:ai": "npm run data:split && npm run data:emotion:ai",
+    "data:build:chunks": "npm run data:split:chunks && npm run data:emotion",
+    "data:build": "npm run data:split && npm run data:emotion"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.17.10",
+    "@react-three/postprocessing": "^2.16.6",
+    "next": "^14.2.23",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.171.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "typescript": "^5.7.2"
+  }
+}

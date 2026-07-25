@@ -4,12 +4,38 @@ import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, ThreeEvent, useFrame } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import * as THREE from "three";
 import { createGalaxyStars, GalaxyStar } from "@/lib/galaxyData";
 
 const baseColor = new THREE.Color();
 const fadedColor = new THREE.Color("#8d93a3");
 const highlightColor = new THREE.Color("#fff7d6");
+const INTRO_DURATION = 14200;
+const introChapters = [
+  "卡塞尔之门",
+  "黄金瞳",
+  "恺撒",
+  "青铜城",
+  "龙影",
+  "星与花",
+  "弟弟",
+  "哥哥",
+  "龙墓",
+  "七宗罪"
+];
+const introChapterPositions = [
+  ["-34vw", "-24vh", "-8deg"],
+  ["-8vw", "-30vh", "6deg"],
+  ["25vw", "-25vh", "-5deg"],
+  ["38vw", "-8vh", "9deg"],
+  ["26vw", "18vh", "-7deg"],
+  ["4vw", "29vh", "5deg"],
+  ["-24vw", "22vh", "-10deg"],
+  ["-39vw", "4vh", "8deg"],
+  ["-18vw", "-5vh", "4deg"],
+  ["15vw", "3vh", "-6deg"]
+];
 
 function easeOutCubic(value: number) {
   return 1 - Math.pow(1 - value, 3);
@@ -19,9 +45,15 @@ function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
+function scaleCssLength(value: string, factor: number) {
+  const match = value.match(/^(-?\d+(?:\.\d+)?)([a-z%]+)$/i);
+  if (!match) return value;
+  return `${Number(match[1]) * factor}${match[2]}`;
+}
+
 function getIntroProgress(t: number, start: number | null) {
   if (start === null) return 0;
-  return easeOutCubic(clamp01((t - start - 3.1) / 4.2));
+  return easeOutCubic(clamp01((t - start - 10.5) / 2.8));
 }
 
 function hash(seed: number) {
@@ -668,7 +700,7 @@ export default function EmotionGalaxy3D() {
   };
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setIntroActive(false), 7600);
+    const timer = window.setTimeout(() => setIntroActive(false), INTRO_DURATION);
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -818,6 +850,26 @@ export default function EmotionGalaxy3D() {
 
       <div className="hint">拖拽旋转 · 滚轮缩放 · 点击星星</div>
       <section className="intro" aria-hidden={!introActive}>
+        <div className="intro-scrim" />
+        <div className="intro-chapters" aria-hidden="true">
+          {introChapters.map((chapter, index) => {
+            const [x, y, rotation] = introChapterPositions[index];
+            const style = {
+              "--x": x,
+              "--y": y,
+              "--mx": scaleCssLength(x, 0.32),
+              "--my": scaleCssLength(y, 0.32),
+              "--r": rotation,
+              "--delay": `${0.3 + index * 0.48}s`
+            } as CSSProperties;
+
+            return (
+              <span className="intro-chapter" key={chapter} style={style}>
+                {chapter}
+              </span>
+            );
+          })}
+        </div>
         <div className="intro-orbit"></div>
         <p>火之晨曦</p>
         <h2>龙族</h2>
