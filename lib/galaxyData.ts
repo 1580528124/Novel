@@ -22,6 +22,8 @@ export type SourceLine = {
   chapterIndex: number;
   chapterTitle: string;
   chapterPosition: number;
+  motifs: string[];
+  domain: string;
 };
 
 export type GalaxyStar = SourceLine & {
@@ -34,6 +36,9 @@ export type GalaxyStar = SourceLine & {
   chapter: number;
   chapterTitle: string;
   chapterPosition: number;
+  motifs: string[];
+  domain: string;
+  isGoldenEye: boolean;
 };
 
 type EmotionRecord = {
@@ -44,7 +49,42 @@ type EmotionRecord = {
   chapter_index?: number;
   chapter_title?: string;
   chapter_position?: number;
+  motifs?: string[];
+  domain?: string;
 };
+
+const motifRules = [
+  { motif: "黄金瞳", words: ["黄金瞳", "金色的瞳", "金色瞳", "金瞳"] },
+  { motif: "龙", words: ["龙", "龙王", "龙类", "龙族"] },
+  { motif: "言灵", words: ["言灵"] },
+  { motif: "青铜", words: ["青铜", "青铜城", "白帝城"] },
+  { motif: "卡塞尔", words: ["卡塞尔", "学院", "诺玛"] },
+  { motif: "七宗罪", words: ["七宗罪", "刀", "刀剑"] },
+  { motif: "路明非", words: ["路明非", "李嘉图"] },
+  { motif: "诺诺", words: ["诺诺", "陈墨瞳"] },
+  { motif: "楚子航", words: ["楚子航"] },
+  { motif: "恺撒", words: ["恺撒", "加图索"] }
+];
+
+function detectMotifs(text: string) {
+  return motifRules
+    .filter((rule) => rule.words.some((word) => text.includes(word)))
+    .map((rule) => rule.motif);
+}
+
+function domainForChapter(chapterTitle: string) {
+  if (chapterTitle.includes("卡塞尔")) return "学院入口星域";
+  if (chapterTitle.includes("黄金瞳")) return "黄金瞳星域";
+  if (chapterTitle.includes("恺撒")) return "加图索星域";
+  if (chapterTitle.includes("青铜")) return "青铜迷宫星域";
+  if (chapterTitle.includes("龙影")) return "龙影深渊星域";
+  if (chapterTitle.includes("星与花")) return "星花舞会星域";
+  if (chapterTitle.includes("弟弟")) return "黑暗甬道星域";
+  if (chapterTitle.includes("哥哥")) return "血缘回声星域";
+  if (chapterTitle.includes("龙墓")) return "龙墓遗迹星域";
+  if (chapterTitle.includes("七宗罪")) return "七宗罪星域";
+  return `${chapterTitle}星域`;
+}
 
 const knownEmotions: EmotionKind[] = [
   "温暖",
@@ -62,11 +102,11 @@ const knownEmotions: EmotionKind[] = [
 ];
 
 const fallbackLines: SourceLine[] = [
-  { text: "她在雨停之后推开窗，街灯像刚醒来的金子。", score: 0.66, emotion: "温暖", intensity: 0.7, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 0 },
-  { text: "那封没有寄出的信，被夹在旧书最暗的一页。", score: -0.42, emotion: "遗憾", intensity: 0.52, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 1 },
-  { text: "他们在桥上笑起来，风把沉默吹得很远。", score: 0.72, emotion: "喜悦", intensity: 0.74, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 2 },
-  { text: "夜色压低了屋檐，连钟声也不敢惊动谁。", score: -0.36, emotion: "孤独", intensity: 0.48, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 3 },
-  { text: "他忽然明白，所谓告别只是另一种抵达。", score: 0.18, emotion: "释然", intensity: 0.44, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 4 }
+  { text: "她在雨停之后推开窗，街灯像刚醒来的金子。", score: 0.66, emotion: "温暖", intensity: 0.7, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 0, motifs: [], domain: "示例星域" },
+  { text: "那封没有寄出的信，被夹在旧书最暗的一页。", score: -0.42, emotion: "遗憾", intensity: 0.52, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 1, motifs: [], domain: "示例星域" },
+  { text: "他们在桥上笑起来，风把沉默吹得很远。", score: 0.72, emotion: "喜悦", intensity: 0.74, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 2, motifs: [], domain: "示例星域" },
+  { text: "夜色压低了屋檐，连钟声也不敢惊动谁。", score: -0.36, emotion: "孤独", intensity: 0.48, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 3, motifs: [], domain: "示例星域" },
+  { text: "他忽然明白，所谓告别只是另一种抵达。", score: 0.18, emotion: "释然", intensity: 0.44, chapterIndex: 1, chapterTitle: "示例章节", chapterPosition: 4, motifs: [], domain: "示例星域" }
 ];
 
 function normalizeEmotion(emotion: string): EmotionKind {
@@ -82,7 +122,9 @@ const sourceLines: SourceLine[] = ((emotionRecords as EmotionRecord[]) || [])
     intensity: clamp(record.emotion_intensity ?? Math.abs(record.emotion_score), 0, 1),
     chapterIndex: record.chapter_index ?? 1,
     chapterTitle: record.chapter_title ?? "未命名章节",
-    chapterPosition: record.chapter_position ?? 0
+    chapterPosition: record.chapter_position ?? 0,
+    motifs: record.motifs?.length ? record.motifs : detectMotifs(record.text),
+    domain: record.domain ?? domainForChapter(record.chapter_title ?? "未命名章节")
   }));
 
 const activeSourceLines = sourceLines.length > 0 ? sourceLines : fallbackLines;
@@ -193,6 +235,12 @@ export function createGalaxyStars(total = activeSourceLines.length): GalaxyStar[
       chapterIndex: source.chapterIndex,
       chapterTitle: source.chapterTitle,
       chapterPosition: source.chapterPosition,
+      motifs: source.motifs,
+      domain: source.domain,
+      isGoldenEye:
+        source.intensity > 0.82 ||
+        source.motifs.includes("黄金瞳") ||
+        source.motifs.includes("龙"),
       radius: radius * lerp(0.82, 1.32, source.intensity),
       x: Math.cos(angle) * (spineRadius + armNoise + voidPush) + Math.cos(angle + Math.PI / 2) * thickness * side,
       y: vertical,

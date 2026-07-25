@@ -339,7 +339,12 @@ function SignatureStars({
   const texture = useMemo(() => createGlowTexture(192), []);
   const signatureStars = useMemo(
     () =>
-      stars.filter((star) => star.intensity > 0.62 || Math.abs(star.score) > 0.68),
+      stars.filter(
+        (star) =>
+          star.intensity > 0.62 ||
+          Math.abs(star.score) > 0.68 ||
+          star.isGoldenEye
+      ),
     [stars]
   );
 
@@ -351,7 +356,11 @@ function SignatureStars({
   return (
     <group ref={groupRef}>
       {signatureStars.map((star) => {
-        const scale = 0.62 + star.intensity * 0.95 + (star.id === selectedId ? 0.55 : 0);
+        const scale =
+          0.62 +
+          star.intensity * 0.95 +
+          (star.isGoldenEye ? 0.38 : 0) +
+          (star.id === selectedId ? 0.55 : 0);
         return (
           <sprite
             key={star.id}
@@ -365,9 +374,9 @@ function SignatureStars({
           >
             <spriteMaterial
               map={texture}
-              color={star.color}
+              color={star.isGoldenEye ? "#ffd56a" : star.color}
               transparent
-              opacity={star.id === selectedId ? 0.92 : 0.5}
+              opacity={star.id === selectedId ? 0.95 : star.isGoldenEye ? 0.68 : 0.5}
               depthWrite={false}
               toneMapped={false}
               blending={THREE.AdditiveBlending}
@@ -710,6 +719,10 @@ export default function EmotionGalaxy3D() {
           <strong>{selected.chapterTitle}</strong>
         </div>
         <div>
+          <span>星域</span>
+          <strong>{selected.domain}</strong>
+        </div>
+        <div>
           <span>情绪强度</span>
           <strong>{intensity}%</strong>
         </div>
@@ -721,6 +734,11 @@ export default function EmotionGalaxy3D() {
           <span>
             {selected.emotion} · {selected.score.toFixed(2)}
           </span>
+        </div>
+        <div className="motifs">
+          {(selected.motifs.length ? selected.motifs : ["普通文本星"]).map((motif) => (
+            <span key={motif}>{motif}</span>
+          ))}
         </div>
         <p>{selected.text}</p>
         <div className="meter">
