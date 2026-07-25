@@ -17,7 +17,7 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #02030a;
+  background: #060611;
   color: var(--ink);
   font-family:
     Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system,
@@ -35,14 +35,27 @@ input {
   height: 100vh;
   min-height: 620px;
   background:
-    radial-gradient(circle at 16% 18%, rgba(70, 105, 158, 0.2), transparent 32%),
-    radial-gradient(circle at 84% 14%, rgba(189, 82, 104, 0.16), transparent 30%),
-    linear-gradient(145deg, #02030a 0%, #060817 54%, #04030a 100%);
+    radial-gradient(ellipse at 62% 44%, rgba(190, 178, 255, 0.16), transparent 32%),
+    radial-gradient(ellipse at 24% 62%, rgba(91, 108, 178, 0.14), transparent 34%),
+    radial-gradient(ellipse at 84% 28%, rgba(191, 72, 166, 0.1), transparent 30%),
+    linear-gradient(145deg, #060611 0%, #0b0a1a 54%, #070613 100%);
+}
+
+.galaxy-page::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 50%, transparent 0%, transparent 56%, rgba(0, 0, 0, 0.34) 100%),
+    linear-gradient(120deg, transparent 0%, rgba(255, 117, 221, 0.035) 44%, transparent 72%);
+  z-index: 1;
 }
 
 .scene {
   position: absolute;
   inset: 0;
+  z-index: 0;
 }
 
 .hud {
