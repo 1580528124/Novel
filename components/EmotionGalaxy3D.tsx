@@ -581,10 +581,28 @@ export default function EmotionGalaxy3D() {
   const [detailOpen, setDetailOpen] = useState(true);
   const [query, setQuery] = useState("");
   const [autoRotate, setAutoRotate] = useState(true);
+  const normalizedQuery = query.trim().toLowerCase();
+  const matches = useMemo(
+    () =>
+      normalizedQuery
+        ? stars.filter((star) => star.text.toLowerCase().includes(normalizedQuery))
+        : [],
+    [normalizedQuery, stars]
+  );
   const intensity = Math.round((Math.abs(selected.score) * 0.76 + 0.24) * 100);
   const selectStar = (star: GalaxyStar) => {
     setSelected(star);
     setDetailOpen(true);
+  };
+  const selectedMatchIndex = matches.findIndex((star) => star.id === selected.id);
+  const jumpToFirstMatch = () => {
+    if (matches[0]) selectStar(matches[0]);
+  };
+  const jumpMatch = (direction: -1 | 1) => {
+    if (!matches.length) return;
+    const currentIndex = selectedMatchIndex >= 0 ? selectedMatchIndex : direction > 0 ? -1 : 0;
+    const nextIndex = (currentIndex + direction + matches.length) % matches.length;
+    selectStar(matches[nextIndex]);
   };
 
   return (
@@ -608,6 +626,33 @@ export default function EmotionGalaxy3D() {
               placeholder="爱、夜、离别..."
             />
           </label>
+          <button
+            type="button"
+            className="search-count"
+            onClick={jumpToFirstMatch}
+            disabled={!matches.length}
+            title="跳到第一个匹配"
+          >
+            {normalizedQuery ? `${matches.length} 个` : "0 个"}
+          </button>
+          <button
+            type="button"
+            className="search-step"
+            onClick={() => jumpMatch(-1)}
+            disabled={!matches.length}
+            title="上一个匹配"
+          >
+            上一个
+          </button>
+          <button
+            type="button"
+            className="search-step"
+            onClick={() => jumpMatch(1)}
+            disabled={!matches.length}
+            title="下一个匹配"
+          >
+            下一个
+          </button>
           <button type="button" onClick={() => setAutoRotate((value) => !value)}>
             {autoRotate ? "暂停" : "旋转"}
           </button>

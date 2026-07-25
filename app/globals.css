@@ -162,6 +162,25 @@ button:hover {
   background: rgba(255, 211, 110, 0.13);
 }
 
+button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+button:disabled:hover {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.search-count {
+  min-width: 58px;
+  color: #ffe6a3;
+}
+
+.search-step {
+  min-width: 66px;
+}
+
 .readout {
   position: absolute;
   left: 18px;
