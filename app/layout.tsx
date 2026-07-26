@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "龙族 火之晨曦",
-  description: "把小说的每一句话变成一颗可探索的 3D 情绪星星。"
+  title: "NORMA · 卡塞尔全息终端",
+  description: "连接诺玛，进入卡塞尔学院的全息档案终端。"
 };
 
 export default function RootLayout({

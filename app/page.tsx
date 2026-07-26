@@ -1,5 +1,5 @@
-import EmotionGalaxy3D from "@/components/EmotionGalaxy3D";
+import NormaTerminal from "@/components/NormaTerminal";
 
 export default function Home() {
-  return <EmotionGalaxy3D />;
+  return <NormaTerminal />;
 }

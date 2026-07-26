@@ -1,7 +1,7 @@
 "use client";
 
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
-import { OrbitControls, Stars } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { Canvas, ThreeEvent, useFrame } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -12,6 +12,15 @@ const baseColor = new THREE.Color();
 const fadedColor = new THREE.Color("#8d93a3");
 const highlightColor = new THREE.Color("#fff7d6");
 const INTRO_DURATION = 14200;
+const dragonPalette = {
+  goldenEye: "#ffd36b",
+  blood: "#c24a35",
+  bronze: "#8f7650",
+  cyan: "#5fa99a",
+  cold: "#6e8fb8",
+  shadow: "#425063",
+  warm: "#d2a867"
+};
 const introChapters = [
   "卡塞尔之门",
   "黄金瞳",
@@ -37,6 +46,96 @@ const introChapterPositions = [
   ["15vw", "3vh", "-6deg"]
 ];
 
+type ArchiveZone = {
+  id: string;
+  title: string;
+  code: string;
+  category: string;
+  riskLevel: string;
+  accessLevel: string;
+  summary: string;
+  color: string;
+  position: [number, number, number];
+  nodeCount: number;
+};
+
+type ArchiveViewMode = "overview" | "zone";
+
+const archiveZones: ArchiveZone[] = [
+  {
+    id: "dragon-kings",
+    title: "龙王档案区",
+    code: "DRAGON KING ARCHIVE",
+    category: "君王 / 古龙",
+    riskLevel: "S",
+    accessLevel: "A",
+    summary: "四大君王、黑王、白王与高危龙类实体的封存资料。",
+    color: "#c24a35",
+    position: [-15, 2.8, -5],
+    nodeCount: 18
+  },
+  {
+    id: "cassell",
+    title: "卡塞尔学院区",
+    code: "CASSELL COLLEGE",
+    category: "学院 / 组织",
+    riskLevel: "B",
+    accessLevel: "B",
+    summary: "校长、执行部、学生会、狮心会与 Norma 系统资料。",
+    color: "#6e8fb8",
+    position: [0, 4.2, -8],
+    nodeCount: 16
+  },
+  {
+    id: "characters",
+    title: "人物档案区",
+    code: "PERSONNEL FILES",
+    category: "混血种 / 关键人物",
+    riskLevel: "A",
+    accessLevel: "A",
+    summary: "路明非、诺诺、楚子航、恺撒等关键人物档案与关系线。",
+    color: "#d2a867",
+    position: [15, 1.8, -4],
+    nodeCount: 22
+  },
+  {
+    id: "missions",
+    title: "任务记录区",
+    code: "MISSION LOGS",
+    category: "执行部 / 事件",
+    riskLevel: "A",
+    accessLevel: "B",
+    summary: "青铜城、三峡水下行动、尼伯龙根与高危任务记录。",
+    color: "#5fa99a",
+    position: [-12, -4.4, 2],
+    nodeCount: 20
+  },
+  {
+    id: "bloodline",
+    title: "言灵与血统区",
+    code: "WORD SPIRIT LAB",
+    category: "言灵 / 血统 / 炼金",
+    riskLevel: "S",
+    accessLevel: "A",
+    summary: "血统评级、黄金瞳、暴血、言灵响应与炼金矩阵。",
+    color: "#ffd36b",
+    position: [0, -2.8, 1],
+    nodeCount: 24
+  },
+  {
+    id: "text-emotions",
+    title: "原文情绪样本库",
+    code: "TEXT EMOTION LIBRARY",
+    category: "文本 / 情绪样本",
+    riskLevel: "C",
+    accessLevel: "C",
+    summary: "当前已解析的小说原文片段，作为 Norma 的情绪训练样本。",
+    color: "#8f7650",
+    position: [17, -5.2, 4],
+    nodeCount: 793
+  }
+];
+
 function easeOutCubic(value: number) {
   return 1 - Math.pow(1 - value, 3);
 }
@@ -54,6 +153,46 @@ function scaleCssLength(value: string, factor: number) {
 function getIntroProgress(t: number, start: number | null) {
   if (start === null) return 0;
   return easeOutCubic(clamp01((t - start - 10.5) / 2.8));
+}
+
+function archiveFocusScale(viewMode: ArchiveViewMode, activeZone?: ArchiveZone) {
+  if (viewMode !== "zone") return 1;
+  return activeZone?.id === "text-emotions" ? 1.28 : 1.85;
+}
+
+function archiveFocusTarget(activeZone: ArchiveZone, viewMode: ArchiveViewMode) {
+  const scale = archiveFocusScale(viewMode, activeZone);
+  return viewMode === "zone"
+    ? new THREE.Vector3(
+        -activeZone.position[0] * scale,
+        -activeZone.position[1] * scale,
+        -activeZone.position[2] * scale
+      )
+    : new THREE.Vector3(0, 0, 0);
+}
+
+function displayColorForStar(star: GalaxyStar) {
+  const intensity = Math.max(Math.abs(star.score), star.intensity ?? 0);
+  if (star.isGoldenEye) return dragonPalette.goldenEye;
+  if (star.motifs.length > 1) return intensity > 0.62 ? dragonPalette.blood : dragonPalette.bronze;
+  if (star.score > 0.45) return intensity > 0.68 ? "#d48845" : dragonPalette.warm;
+  if (star.score < -0.45) return intensity > 0.68 ? "#536f9e" : dragonPalette.cold;
+  if (star.motifs.length > 0) return dragonPalette.cyan;
+  return intensity > 0.58 ? "#a47c52" : dragonPalette.shadow;
+}
+
+function resonanceForStar(star: GalaxyStar) {
+  const motifWeight = Math.min(0.45, star.motifs.length * 0.12);
+  const goldenWeight = star.isGoldenEye ? 0.28 : 0;
+  return Math.round(clamp01(Math.abs(star.score) * 0.48 + star.intensity * 0.34 + motifWeight + goldenWeight) * 100);
+}
+
+function riskLevelForResonance(resonance: number) {
+  if (resonance >= 88) return "S";
+  if (resonance >= 72) return "A";
+  if (resonance >= 56) return "B";
+  if (resonance >= 38) return "C";
+  return "D";
 }
 
 function hash(seed: number) {
@@ -107,18 +246,109 @@ function createRingTexture(size = 256) {
   return texture;
 }
 
+function createGoldenEyeTexture(size = 512) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+
+  const center = size / 2;
+  context.clearRect(0, 0, size, size);
+  context.save();
+  context.translate(center, center);
+  context.scale(1.58, 0.72);
+  context.beginPath();
+  context.arc(0, 0, size * 0.28, 0, Math.PI * 2);
+  context.clip();
+
+  const iris = context.createRadialGradient(0, 0, size * 0.02, 0, 0, size * 0.28);
+  iris.addColorStop(0, "rgba(255,246,202,0.98)");
+  iris.addColorStop(0.18, "rgba(255,218,113,0.94)");
+  iris.addColorStop(0.46, "rgba(176,115,38,0.88)");
+  iris.addColorStop(0.78, "rgba(73,45,21,0.84)");
+  iris.addColorStop(1, "rgba(10,7,5,0)");
+  context.fillStyle = iris;
+  context.fillRect(-center, -center, size, size);
+
+  context.globalCompositeOperation = "lighter";
+  for (let index = 0; index < 52; index += 1) {
+    const angle = (index / 52) * Math.PI * 2;
+    const inner = size * (0.045 + hash(index + 5100) * 0.04);
+    const outer = size * (0.18 + hash(index + 5200) * 0.08);
+    context.beginPath();
+    context.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+    context.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+    context.strokeStyle = `rgba(255,222,128,${0.12 + hash(index + 5300) * 0.22})`;
+    context.lineWidth = 0.7 + hash(index + 5400) * 1.4;
+    context.stroke();
+  }
+
+  context.globalCompositeOperation = "source-over";
+  context.strokeStyle = "rgba(255,230,155,0.54)";
+  context.lineWidth = 2.2;
+  context.beginPath();
+  context.arc(0, 0, size * 0.205, 0, Math.PI * 2);
+  context.stroke();
+  context.strokeStyle = "rgba(53,32,14,0.62)";
+  context.lineWidth = 7;
+  context.beginPath();
+  context.arc(0, 0, size * 0.255, 0, Math.PI * 2);
+  context.stroke();
+
+  context.fillStyle = "rgba(4,2,1,0.92)";
+  context.beginPath();
+  context.ellipse(0, 0, size * 0.012, size * 0.2, 0, 0, Math.PI * 2);
+  context.fill();
+  context.strokeStyle = "rgba(255,226,142,0.28)";
+  context.lineWidth = 1.2;
+  context.beginPath();
+  context.moveTo(0, -size * 0.18);
+  context.lineTo(0, size * 0.18);
+  context.stroke();
+
+  context.fillStyle = "rgba(255,248,206,0.58)";
+  context.beginPath();
+  context.ellipse(-size * 0.055, -size * 0.085, size * 0.032, size * 0.012, -0.45, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+
+  const glow = context.createRadialGradient(center, center, size * 0.08, center, center, size * 0.48);
+  glow.addColorStop(0, "rgba(255,213,107,0.2)");
+  glow.addColorStop(0.46, "rgba(255,148,62,0.1)");
+  glow.addColorStop(1, "rgba(255,213,107,0)");
+  context.fillStyle = glow;
+  context.fillRect(0, 0, size, size);
+
+  context.save();
+  context.globalCompositeOperation = "destination-in";
+  context.translate(center, center);
+  context.scale(1.58, 0.72);
+  const mask = context.createRadialGradient(0, 0, size * 0.02, 0, 0, size * 0.34);
+  mask.addColorStop(0, "rgba(255,255,255,1)");
+  mask.addColorStop(0.72, "rgba(255,255,255,0.96)");
+  mask.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = mask;
+  context.fillRect(-center, -center, size, size);
+  context.restore();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function DeepSpaceBackdrop() {
   const glowTexture = useMemo(() => createGlowTexture(128), []);
   const nearStarsRef = useRef<THREE.Points>(null);
   const farStarsRef = useRef<THREE.Points>(null);
 
   const farStars = useMemo(() => {
-    const count = 180;
+    const count = 70;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
-    const blue = new THREE.Color("#9bb7ff");
-    const pink = new THREE.Color("#ffc1f1");
-    const white = new THREE.Color("#fff9df");
+    const blue = new THREE.Color("#7fa5c8");
+    const pink = new THREE.Color("#c58b58");
+    const white = new THREE.Color("#f4e6c1");
     const color = new THREE.Color();
 
     for (let index = 0; index < count; index += 1) {
@@ -142,7 +372,7 @@ function DeepSpaceBackdrop() {
   }, []);
 
   const nearStars = useMemo(() => {
-    const count = 45;
+    const count = 20;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const color = new THREE.Color();
@@ -154,7 +384,7 @@ function DeepSpaceBackdrop() {
       positions[index * 3 + 1] = (hash(index + 2600) - 0.5) * 30;
       positions[index * 3 + 2] = Math.sin(angle) * radius - 10 - hash(index + 2700) * 18;
 
-      color.set(hash(index + 2800) > 0.5 ? "#fff7d8" : "#b8c8ff");
+      color.set(hash(index + 2800) > 0.5 ? "#f4d58a" : "#7fb0a6");
       colors[index * 3] = color.r;
       colors[index * 3 + 1] = color.g;
       colors[index * 3 + 2] = color.b;
@@ -209,13 +439,17 @@ function GalaxyField({
   query,
   selectedId,
   onSelect,
-  introActive
+  introActive,
+  activeZone,
+  viewMode
 }: {
   stars: GalaxyStar[];
   query: string;
   selectedId: number;
   onSelect: (star: GalaxyStar) => void;
   introActive: boolean;
+  activeZone: ArchiveZone;
+  viewMode: ArchiveViewMode;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const introStartRef = useRef<number | null>(null);
@@ -224,6 +458,8 @@ function GalaxyField({
   const selectedGlowRef = useRef<THREE.Sprite>(null);
   const selectedRippleRef = useRef<THREE.Sprite>(null);
   const normalizedQuery = query.trim().toLowerCase();
+  const isTextZoneFocused = viewMode === "zone" && activeZone.id === "text-emotions";
+  const isOtherZoneFocused = viewMode === "zone" && activeZone.id !== "text-emotions";
 
   const starTexture = useMemo(() => createGlowTexture(128), []);
   const ringTexture = useMemo(() => createRingTexture(256), []);
@@ -237,7 +473,7 @@ function GalaxyField({
       positions[index * 3 + 1] = star.y;
       positions[index * 3 + 2] = star.z;
 
-      const color = new THREE.Color(star.color);
+      const color = new THREE.Color(displayColorForStar(star));
       colors[index * 3] = color.r;
       colors[index * 3 + 1] = color.g;
       colors[index * 3 + 2] = color.b;
@@ -252,7 +488,7 @@ function GalaxyField({
   const glowGeometry = useMemo(() => geometry.clone(), [geometry]);
 
   const colorArray = useMemo(
-    () => stars.map((star) => new THREE.Color(star.color)),
+    () => stars.map((star) => new THREE.Color(displayColorForStar(star))),
     [stars]
   );
 
@@ -267,8 +503,11 @@ function GalaxyField({
       const isSelected = star.id === selectedId;
       const isMatched =
         normalizedQuery.length > 0 && star.text.toLowerCase().includes(normalizedQuery);
+      const isRepresentative =
+        index % 18 === 0 || star.intensity > 0.82 || star.isGoldenEye || isSelected || isMatched;
 
       baseColor.copy(colorArray[index]);
+      if (isTextZoneFocused && !isRepresentative) baseColor.lerp(fadedColor, 0.86);
       if (normalizedQuery && !isMatched && !isSelected) baseColor.lerp(fadedColor, 0.78);
       if (isSelected || isMatched) baseColor.lerp(highlightColor, 0.32);
       colorAttribute.setXYZ(index, baseColor.r, baseColor.g, baseColor.b);
@@ -286,8 +525,13 @@ function GalaxyField({
     if (introStartRef.current === null) introStartRef.current = t;
     const introProgress = introActive ? getIntroProgress(t, introStartRef.current) : 1;
     if (group) {
-      group.rotation.y = t * 0.012 + (1 - introProgress) * 1.3;
-      group.scale.setScalar(0.08 + introProgress * 0.92);
+      const focusScale = archiveFocusScale(viewMode, activeZone);
+      const introScale = 0.08 + introProgress * 0.92;
+      const targetPosition = archiveFocusTarget(activeZone, viewMode);
+      const targetRotationY = viewMode === "zone" ? 0 : t * 0.012 + (1 - introProgress) * 1.3;
+      group.rotation.y = THREE.MathUtils.lerp(group.rotation.y, targetRotationY, 0.08);
+      group.position.lerp(targetPosition, 0.08);
+      group.scale.lerp(new THREE.Vector3(introScale * focusScale, introScale * focusScale, introScale * focusScale), 0.08);
     }
     if (selectedGlow) {
       const pulse = 1 + Math.sin(t * 4.2) * 0.14;
@@ -309,10 +553,10 @@ function GalaxyField({
     <group ref={groupRef}>
       <points ref={glowRef} geometry={glowGeometry} renderOrder={0}>
         <pointsMaterial
-          size={1.08}
+          size={isTextZoneFocused ? 0.5 : 1.08}
           sizeAttenuation
           transparent
-          opacity={0.46}
+          opacity={isOtherZoneFocused ? 0.06 : isTextZoneFocused ? 0.035 : 0.46}
           map={starTexture}
           vertexColors
           depthWrite={false}
@@ -327,10 +571,10 @@ function GalaxyField({
         renderOrder={1}
       >
         <pointsMaterial
-          size={0.26}
+          size={isTextZoneFocused ? 0.16 : 0.26}
           sizeAttenuation
           transparent
-          opacity={1}
+          opacity={isOtherZoneFocused ? 0.08 : isTextZoneFocused ? 0.34 : 1}
           alphaTest={0.02}
           map={starTexture}
           vertexColors
@@ -364,7 +608,7 @@ function GalaxyField({
           >
             <spriteMaterial
               map={ringTexture}
-              color={stars[selectedId].color}
+              color={displayColorForStar(stars[selectedId])}
               transparent
               opacity={0.42}
               depthWrite={false}
@@ -383,12 +627,16 @@ function SignatureStars({
   stars,
   selectedId,
   onSelect,
-  introActive
+  introActive,
+  activeZone,
+  viewMode
 }: {
   stars: GalaxyStar[];
   selectedId: number;
   onSelect: (star: GalaxyStar) => void;
   introActive: boolean;
+  activeZone: ArchiveZone;
+  viewMode: ArchiveViewMode;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const introStartRef = useRef<number | null>(null);
@@ -409,18 +657,26 @@ function SignatureStars({
     const t = clock.getElapsedTime();
     if (introStartRef.current === null) introStartRef.current = t;
     const introProgress = introActive ? getIntroProgress(t, introStartRef.current) : 1;
-    groupRef.current.rotation.y = t * 0.012 + (1 - introProgress) * 1.3;
-    groupRef.current.scale.setScalar(0.08 + introProgress * 0.92);
+    const focusScale = archiveFocusScale(viewMode, activeZone);
+    const introScale = 0.08 + introProgress * 0.92;
+    const targetPosition = archiveFocusTarget(activeZone, viewMode);
+    const targetRotationY = viewMode === "zone" ? 0 : t * 0.012 + (1 - introProgress) * 1.3;
+    groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotationY, 0.08);
+    groupRef.current.position.lerp(targetPosition, 0.08);
+    groupRef.current.scale.lerp(new THREE.Vector3(introScale * focusScale, introScale * focusScale, introScale * focusScale), 0.08);
   });
+
+  const isTextZoneFocused = viewMode === "zone" && activeZone.id === "text-emotions";
 
   return (
     <group ref={groupRef}>
       {signatureStars.map((star) => {
-        const scale =
+        const baseScale =
           0.62 +
           star.intensity * 0.95 +
           (star.isGoldenEye ? 0.38 : 0) +
           (star.id === selectedId ? 0.55 : 0);
+        const scale = isTextZoneFocused ? baseScale * 0.38 : baseScale;
         return (
           <sprite
             key={star.id}
@@ -434,14 +690,141 @@ function SignatureStars({
           >
             <spriteMaterial
               map={texture}
-              color={star.isGoldenEye ? "#ffd56a" : star.color}
+              color={star.isGoldenEye ? dragonPalette.goldenEye : displayColorForStar(star)}
               transparent
-              opacity={star.id === selectedId ? 0.95 : star.isGoldenEye ? 0.68 : 0.5}
+              opacity={
+                viewMode === "zone" && activeZone.id !== "text-emotions"
+                  ? 0.06
+                  : isTextZoneFocused
+                    ? star.id === selectedId
+                      ? 0.66
+                      : star.isGoldenEye
+                        ? 0.3
+                        : 0.22
+                  : star.id === selectedId
+                    ? 0.95
+                    : star.isGoldenEye
+                      ? 0.68
+                      : 0.5
+              }
               depthWrite={false}
               toneMapped={false}
               blending={THREE.AdditiveBlending}
             />
           </sprite>
+        );
+      })}
+    </group>
+  );
+}
+
+function ArchiveZoneField({
+  zones,
+  activeZoneId,
+  onSelect,
+  viewMode
+}: {
+  zones: ArchiveZone[];
+  activeZoneId: string;
+  onSelect: (zone: ArchiveZone) => void;
+  viewMode: ArchiveViewMode;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const texture = useMemo(() => createGlowTexture(192), []);
+  const zoneNodeGeometry = useMemo(() => {
+    return zones.map((zone, zoneIndex) => {
+      const positions = new Float32Array(zone.nodeCount * 3);
+      const colors = new Float32Array(zone.nodeCount * 3);
+      const color = new THREE.Color(zone.color);
+
+      for (let index = 0; index < zone.nodeCount; index += 1) {
+        const angle = (index / zone.nodeCount) * Math.PI * 2 + hash(zoneIndex * 100 + index) * 0.55;
+        const radius = 1.2 + hash(zoneIndex * 200 + index) * 2.4;
+        const height = (hash(zoneIndex * 300 + index) - 0.5) * 1.6;
+        positions[index * 3] = zone.position[0] + Math.cos(angle) * radius;
+        positions[index * 3 + 1] = zone.position[1] + height;
+        positions[index * 3 + 2] = zone.position[2] + Math.sin(angle) * radius * 0.72;
+        colors[index * 3] = color.r;
+        colors[index * 3 + 1] = color.g;
+        colors[index * 3 + 2] = color.b;
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      return geometry;
+    });
+  }, [zones]);
+
+  const connectionGeometry = useMemo(() => {
+    const points = zones.map((zone) => new THREE.Vector3(...zone.position));
+    const curve = new THREE.CatmullRomCurve3(points.concat(points[0]), true, "centripetal", 0.36);
+    return new THREE.BufferGeometry().setFromPoints(curve.getPoints(160));
+  }, [zones]);
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    const elapsed = clock.getElapsedTime();
+    const activeZone = zones.find((zone) => zone.id === activeZoneId) ?? zones[0];
+    const focusScale = archiveFocusScale(viewMode, activeZone);
+    const targetPosition = archiveFocusTarget(activeZone, viewMode);
+    const targetRotationY = viewMode === "zone" ? 0 : elapsed * 0.004;
+    groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotationY, 0.08);
+    groupRef.current.position.lerp(targetPosition, 0.08);
+    groupRef.current.scale.lerp(new THREE.Vector3(focusScale, focusScale, focusScale), 0.08);
+  });
+
+  return (
+    <group ref={groupRef}>
+      <line>
+        <primitive object={connectionGeometry} attach="geometry" />
+        <lineBasicMaterial
+          color="#5fa99a"
+          transparent
+          opacity={0.12}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </line>
+      {zones.map((zone, index) => {
+        const isActive = zone.id === activeZoneId;
+        const isDimmed = viewMode === "zone" && !isActive;
+        const scale = isActive ? 2.4 : 1.75;
+        return (
+          <group key={zone.id}>
+            <points geometry={zoneNodeGeometry[index]} renderOrder={1}>
+              <pointsMaterial
+                size={isActive ? 0.36 : 0.24}
+                sizeAttenuation
+                transparent
+                opacity={isDimmed ? 0.08 : isActive ? 0.82 : 0.44}
+                map={texture}
+                vertexColors
+                depthWrite={false}
+                toneMapped={false}
+                blending={THREE.AdditiveBlending}
+              />
+            </points>
+            <sprite
+              position={zone.position}
+              scale={[scale, scale, 1]}
+              renderOrder={3}
+              onClick={(event) => {
+                event.stopPropagation();
+                onSelect(zone);
+              }}
+            >
+              <spriteMaterial
+                map={texture}
+                color={zone.color}
+                transparent
+                opacity={isDimmed ? 0.12 : isActive ? 0.95 : 0.68}
+                depthWrite={false}
+                toneMapped={false}
+                blending={THREE.AdditiveBlending}
+              />
+            </sprite>
+          </group>
         );
       })}
     </group>
@@ -486,7 +869,15 @@ function ReadingPath({ stars }: { stars: GalaxyStar[] }) {
   );
 }
 
-function NebulaCloud({ introActive }: { introActive: boolean }) {
+function NebulaCloud({
+  introActive,
+  activeZone,
+  viewMode
+}: {
+  introActive: boolean;
+  activeZone: ArchiveZone;
+  viewMode: ArchiveViewMode;
+}) {
   const texture = useMemo(() => createGlowTexture(128), []);
   const groupRef = useRef<THREE.Group>(null);
   const materialRef = useRef<THREE.PointsMaterial>(null);
@@ -495,10 +886,10 @@ function NebulaCloud({ introActive }: { introActive: boolean }) {
     const count = 260;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
-    const pink = new THREE.Color("#ff79d7");
-    const violet = new THREE.Color("#9b6cff");
-    const blue = new THREE.Color("#79a8ff");
-    const whiteBlue = new THREE.Color("#d9e2ff");
+    const pink = new THREE.Color("#b4533f");
+    const violet = new THREE.Color("#8f7650");
+    const blue = new THREE.Color("#5fa99a");
+    const whiteBlue = new THREE.Color("#f0d08a");
     const color = new THREE.Color();
     const knots = [0.1, 0.2, 0.34, 0.52, 0.68, 0.83, 0.94];
 
@@ -555,8 +946,13 @@ function NebulaCloud({ introActive }: { introActive: boolean }) {
     if (introStartRef.current === null) introStartRef.current = elapsed;
     const introProgress = introActive ? getIntroProgress(elapsed, introStartRef.current) : 1;
     if (groupRef.current) {
-      groupRef.current.rotation.y = elapsed * 0.006 + (1 - introProgress) * 0.8;
-      groupRef.current.scale.setScalar(0.12 + introProgress * 0.88);
+      const focusScale = archiveFocusScale(viewMode, activeZone);
+      const introScale = 0.12 + introProgress * 0.88;
+      const targetPosition = archiveFocusTarget(activeZone, viewMode);
+      const targetRotationY = viewMode === "zone" ? 0 : elapsed * 0.006 + (1 - introProgress) * 0.8;
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotationY, 0.08);
+      groupRef.current.position.lerp(targetPosition, 0.08);
+      groupRef.current.scale.lerp(new THREE.Vector3(introScale * focusScale, introScale * focusScale, introScale * focusScale), 0.08);
     }
     if (materialRef.current) materialRef.current.opacity = 0.045 * introProgress;
   });
@@ -581,29 +977,64 @@ function NebulaCloud({ introActive }: { introActive: boolean }) {
   );
 }
 
-function CoreGlow() {
+function CoreGlow({
+  activeZone,
+  viewMode
+}: {
+  activeZone: ArchiveZone;
+  viewMode: ArchiveViewMode;
+}) {
   const texture = useMemo(() => createGlowTexture(256), []);
+  const eyeTexture = useMemo(() => createGoldenEyeTexture(512), []);
+  const groupRef = useRef<THREE.Group>(null);
+  const eyeRef = useRef<THREE.Sprite>(null);
+
+  useFrame(({ clock }) => {
+    const elapsed = clock.getElapsedTime();
+    if (groupRef.current) {
+      const focusScale = archiveFocusScale(viewMode, activeZone);
+      const targetPosition = archiveFocusTarget(activeZone, viewMode);
+      groupRef.current.position.lerp(targetPosition, 0.08);
+      groupRef.current.scale.lerp(new THREE.Vector3(focusScale, focusScale, focusScale), 0.08);
+    }
+    if (!eyeRef.current) return;
+    const pulse = 1 + Math.sin(elapsed * 1.35) * 0.035;
+    eyeRef.current.scale.set(5.35 * pulse, 2.1 * pulse, 1);
+    eyeRef.current.material.rotation = Math.sin(elapsed * 0.28) * 0.025;
+  });
 
   return (
-    <group>
+    <group ref={groupRef}>
       <sprite position={[0, 0, 0]} scale={[10.8, 7.2, 1]}>
         <spriteMaterial
           map={texture}
-          color="#a9b9ff"
+          color="#7d5c32"
           transparent
-          opacity={0.34}
+          opacity={0.28}
           depthWrite={false}
           toneMapped={false}
           blending={THREE.AdditiveBlending}
         />
       </sprite>
-      <sprite position={[0, 0, 0]} scale={[5.2, 3.8, 1]}>
+      <sprite position={[0, 0, 0]} scale={[6.2, 3.2, 1]}>
         <spriteMaterial
           map={texture}
-          color="#ffe4ff"
+          color="#ffd36b"
           transparent
-          opacity={0.48}
+          opacity={0.56}
           depthWrite={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </sprite>
+      <sprite ref={eyeRef} position={[0, 0, 0.12]} scale={[5.35, 2.1, 1]} renderOrder={2}>
+        <spriteMaterial
+          map={eyeTexture}
+          color="#ffffff"
+          transparent
+          opacity={0.82}
+          depthWrite={false}
+          depthTest={false}
           toneMapped={false}
           blending={THREE.AdditiveBlending}
         />
@@ -612,32 +1043,54 @@ function CoreGlow() {
   );
 }
 
-function SpiralGuide({ introActive }: { introActive: boolean }) {
+function AlchemyMatrix({
+  introActive,
+  activeZone,
+  viewMode
+}: {
+  introActive: boolean;
+  activeZone: ArchiveZone;
+  viewMode: ArchiveViewMode;
+}) {
   const groupRef = useRef<THREE.Group>(null);
   const introStartRef = useRef<number | null>(null);
-  const lines = useMemo(() => {
-    return Array.from({ length: 3 }, (_, arm) => {
-      const start = [0.08, 0.18, 0.3][arm];
-      const end = [0.92, 0.98, 0.84][arm];
-      const points = Array.from({ length: 190 }, (_, index) => {
-        const progress = index / 189;
-        const t = start + (end - start) * progress;
-        const armOffset = (arm % 3) * ((Math.PI * 2) / 3) + (arm > 2 ? 0.36 : 0);
-        const angle =
-          t * Math.PI * 2 * 1.85 +
-          armOffset +
-          Math.sin(t * Math.PI * 6.5 + arm) * 0.34;
-        const radius = 14.8 + (1.7 - 14.8) * Math.pow(t, 0.92) + Math.sin(t * Math.PI * 8 + arm) * 0.62;
-        const ellipseX = 1.2 - t * 0.18;
-        const ellipseZ = 0.7 + t * 0.24;
-        return new THREE.Vector3(
-          Math.cos(angle) * radius * ellipseX,
-          Math.sin(angle * 0.42) * 1.1,
-          Math.sin(angle) * radius * ellipseZ
-        );
-      });
+  const { arcs, ticks } = useMemo(() => {
+    const ringRadii = [4.2, 7.1, 10.4, 13.5, 16.2];
+    const nextArcs = ringRadii.flatMap((radius, ring) =>
+      Array.from({ length: ring === 0 ? 3 : 5 }, (_, segment) => {
+        const start = segment * ((Math.PI * 2) / 5) + ring * 0.18 + hash(ring * 20 + segment) * 0.26;
+        const length = 0.54 + hash(ring * 50 + segment) * 0.62;
+        const points = Array.from({ length: 72 }, (_, index) => {
+          const angle = start + length * (index / 71);
+          const wobble = Math.sin(angle * 3 + ring) * 0.08;
+          return new THREE.Vector3(
+            Math.cos(angle) * (radius + wobble) * 1.22,
+            Math.sin(angle * 0.33) * 0.18,
+            Math.sin(angle) * (radius + wobble) * 0.72
+          );
+        });
+        return {
+          geometry: new THREE.BufferGeometry().setFromPoints(points),
+          color: ring % 2 === 0 ? "#b08b4f" : "#4d8c82",
+          opacity: ring % 2 === 0 ? 0.2 : 0.14
+        };
+      })
+    );
+
+    const nextTicks = Array.from({ length: 54 }, (_, index) => {
+      const angle = (index / 54) * Math.PI * 2;
+      const radius = index % 3 === 0 ? 16.8 : index % 3 === 1 ? 10.8 : 7.4;
+      const length = index % 4 === 0 ? 0.58 : 0.32;
+      const inner = radius - length;
+      const outer = radius + length;
+      const points = [
+        new THREE.Vector3(Math.cos(angle) * inner * 1.22, 0.03, Math.sin(angle) * inner * 0.72),
+        new THREE.Vector3(Math.cos(angle) * outer * 1.22, 0.03, Math.sin(angle) * outer * 0.72)
+      ];
       return new THREE.BufferGeometry().setFromPoints(points);
     });
+
+    return { arcs: nextArcs, ticks: nextTicks };
   }, []);
 
   useFrame(({ clock }) => {
@@ -645,20 +1098,37 @@ function SpiralGuide({ introActive }: { introActive: boolean }) {
     if (introStartRef.current === null) introStartRef.current = elapsed;
     const introProgress = introActive ? getIntroProgress(elapsed, introStartRef.current) : 1;
     if (groupRef.current) {
-      groupRef.current.rotation.y = elapsed * 0.006 + (1 - introProgress) * 0.8;
-      groupRef.current.scale.setScalar(0.12 + introProgress * 0.88);
+      const focusScale = archiveFocusScale(viewMode, activeZone);
+      const introScale = 0.12 + introProgress * 0.88;
+      const targetPosition = archiveFocusTarget(activeZone, viewMode);
+      const targetRotationY = viewMode === "zone" ? 0 : elapsed * 0.002 + (1 - introProgress) * 0.5;
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotationY, 0.08);
+      groupRef.current.position.lerp(targetPosition, 0.08);
+      groupRef.current.scale.lerp(new THREE.Vector3(introScale * focusScale, introScale * focusScale, introScale * focusScale), 0.08);
     }
   });
 
   return (
     <group ref={groupRef}>
-      {lines.map((geometry, index) => (
+      {arcs.map(({ geometry, color, opacity }, index) => (
         <line key={index}>
           <primitive object={geometry} attach="geometry" />
           <lineBasicMaterial
-            color={index % 2 === 0 ? "#ff8be4" : "#8ea8ff"}
+            color={color}
             transparent
-            opacity={0.11}
+            opacity={opacity}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </line>
+      ))}
+      {ticks.map((geometry, index) => (
+        <line key={`tick-${index}`}>
+          <primitive object={geometry} attach="geometry" />
+          <lineBasicMaterial
+            color={index % 4 === 0 ? "#d2a867" : "#5fa99a"}
+            transparent
+            opacity={index % 4 === 0 ? 0.24 : 0.12}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
           />
@@ -670,8 +1140,26 @@ function SpiralGuide({ introActive }: { introActive: boolean }) {
 
 export default function EmotionGalaxy3D() {
   const stars = useMemo(() => createGalaxyStars(), []);
+  const archiveStars = useMemo(() => {
+    const textZone = archiveZones.find((zone) => zone.id === "text-emotions") ?? archiveZones[5];
+    const columns = 46;
+    return stars.map((star, index) => {
+      const row = Math.floor(index / columns);
+      const column = index % columns;
+      const page = Math.floor(row / 8);
+      const rowInPage = row % 8;
+      return {
+        ...star,
+        x: textZone.position[0] + (column - columns / 2) * 0.28 + (hash(index + 7000) - 0.5) * 0.08,
+        y: textZone.position[1] + (rowInPage - 3.5) * 0.42 + (hash(index + 7200) - 0.5) * 0.08,
+        z: textZone.position[2] + (page - 1.2) * 1.15 + (hash(index + 7100) - 0.5) * 0.12
+      };
+    });
+  }, [stars]);
   const [selected, setSelected] = useState(stars[0]);
-  const [detailOpen, setDetailOpen] = useState(true);
+  const [activeZoneId, setActiveZoneId] = useState("bloodline");
+  const [viewMode, setViewMode] = useState<ArchiveViewMode>("overview");
+  const [detailOpen, setDetailOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [autoRotate, setAutoRotate] = useState(true);
   const [introActive, setIntroActive] = useState(true);
@@ -679,14 +1167,28 @@ export default function EmotionGalaxy3D() {
   const matches = useMemo(
     () =>
       normalizedQuery
-        ? stars.filter((star) => star.text.toLowerCase().includes(normalizedQuery))
+        ? archiveStars.filter((star) => star.text.toLowerCase().includes(normalizedQuery))
         : [],
-    [normalizedQuery, stars]
+    [archiveStars, normalizedQuery]
   );
   const intensity = Math.round((Math.abs(selected.score) * 0.76 + 0.24) * 100);
+  const selectedColor = displayColorForStar(selected);
+  const resonance = resonanceForStar(selected);
+  const riskLevel = riskLevelForResonance(resonance);
+  const activeZone = archiveZones.find((zone) => zone.id === activeZoneId) ?? archiveZones[0];
   const selectStar = (star: GalaxyStar) => {
     setSelected(star);
+    setActiveZoneId("text-emotions");
+    setViewMode("zone");
     setDetailOpen(true);
+  };
+  const selectZone = (zone: ArchiveZone) => {
+    setActiveZoneId(zone.id);
+    setViewMode("zone");
+    if (zone.id !== "text-emotions") setDetailOpen(false);
+  };
+  const returnOverview = () => {
+    setViewMode("overview");
   };
   const selectedMatchIndex = matches.findIndex((star) => star.id === selected.id);
   const jumpToFirstMatch = () => {
@@ -706,23 +1208,35 @@ export default function EmotionGalaxy3D() {
 
   return (
     <main className={`galaxy-page${introActive ? " is-intro" : ""}`}>
-      <section className="hud" aria-label="控制面板">
+      <section className="hud" aria-label="卡塞尔档案控制台">
         <div className="brand">
           <span className="brand-light" />
           <div>
             <h1>龙族 火之晨曦</h1>
-            <p>3D 星河中的每一颗光，都是一句原文。</p>
+            <p>NORMA / BLOODLINE EMOTION ARCHIVE</p>
           </div>
         </div>
 
+        <div className="system-status" aria-hidden="true">
+          <span>NORMA ACCESS</span>
+          <strong>GRANTED</strong>
+          <span>BLOODLINE TRACE</span>
+          <strong>{resonance}%</strong>
+        </div>
+
         <div className="controls">
+          {viewMode === "zone" ? (
+            <button type="button" className="overview-button" onClick={returnOverview}>
+              返回总览
+            </button>
+          ) : null}
           <label className="search">
-            <span>搜索</span>
+            <span>档案检索</span>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               type="search"
-              placeholder="爱、夜、离别..."
+              placeholder="路明非、黄金瞳、言灵..."
             />
           </label>
           <button
@@ -730,33 +1244,48 @@ export default function EmotionGalaxy3D() {
             className="search-count"
             onClick={jumpToFirstMatch}
             disabled={!matches.length}
-            title="跳到第一个匹配"
+            title="跳到第一条档案"
           >
-            {normalizedQuery ? `${matches.length} 个` : "0 个"}
+            {normalizedQuery ? `${matches.length} 条` : "0 条"}
           </button>
           <button
             type="button"
             className="search-step"
             onClick={() => jumpMatch(-1)}
             disabled={!matches.length}
-            title="上一个匹配"
+            title="前一条档案"
           >
-            上一个
+            前一记录
           </button>
           <button
             type="button"
             className="search-step"
             onClick={() => jumpMatch(1)}
             disabled={!matches.length}
-            title="下一个匹配"
+            title="后一条档案"
           >
-            下一个
+            后一记录
           </button>
           <button type="button" onClick={() => setAutoRotate((value) => !value)}>
-            {autoRotate ? "暂停" : "旋转"}
+            {autoRotate ? "暂停解析" : "继续解析"}
           </button>
         </div>
       </section>
+
+      <nav className="zone-nav" aria-label="资料星域">
+        {archiveZones.map((zone) => (
+          <button
+            type="button"
+            key={zone.id}
+            className={zone.id === activeZoneId ? "is-active" : ""}
+            onClick={() => selectZone(zone)}
+            style={{ "--zone-color": zone.color } as CSSProperties}
+          >
+            <span>{zone.code}</span>
+            <strong>{zone.title}</strong>
+          </button>
+        ))}
+      </nav>
 
       <div className="scene">
         <Canvas
@@ -764,28 +1293,37 @@ export default function EmotionGalaxy3D() {
           dpr={[1, 2]}
           onPointerMissed={() => setDetailOpen(false)}
         >
-          <color attach="background" args={["#060611"]} />
-          <fog attach="fog" args={["#090817", 34, 72]} />
-          <ambientLight intensity={0.7} />
-          <pointLight position={[10, 14, 12]} intensity={2.4} color="#ffe6f4" />
-          <pointLight position={[-12, -6, -14]} intensity={2.1} color="#8eb0ff" />
-          <Stars radius={80} depth={40} count={2600} factor={5} saturation={0.4} fade speed={0.22} />
+          <color attach="background" args={["#05070a"]} />
+          <fog attach="fog" args={["#07100f", 32, 70]} />
+          <ambientLight intensity={0.58} />
+          <pointLight position={[10, 14, 12]} intensity={2.6} color="#ffd36b" />
+          <pointLight position={[-12, -6, -14]} intensity={1.7} color="#5fa99a" />
           <DeepSpaceBackdrop />
-          <CoreGlow />
-          <NebulaCloud introActive={introActive} />
-          <SpiralGuide introActive={introActive} />
+          <CoreGlow activeZone={activeZone} viewMode={viewMode} />
+          <NebulaCloud introActive={introActive} activeZone={activeZone} viewMode={viewMode} />
+          <AlchemyMatrix introActive={introActive} activeZone={activeZone} viewMode={viewMode} />
+          <ArchiveZoneField
+            zones={archiveZones}
+            activeZoneId={activeZoneId}
+            onSelect={selectZone}
+            viewMode={viewMode}
+          />
           <GalaxyField
-            stars={stars}
+            stars={archiveStars}
             query={query}
             selectedId={selected.id}
             onSelect={selectStar}
             introActive={introActive}
+            activeZone={activeZone}
+            viewMode={viewMode}
           />
           <SignatureStars
-            stars={stars}
+            stars={archiveStars}
             selectedId={selected.id}
             onSelect={selectStar}
             introActive={introActive}
+            activeZone={activeZone}
+            viewMode={viewMode}
           />
           <OrbitControls
             autoRotate={autoRotate}
@@ -801,10 +1339,10 @@ export default function EmotionGalaxy3D() {
         </Canvas>
       </div>
 
-      <aside className="readout" aria-label="银河数据">
+      <aside className="readout" aria-label="档案数据">
         <div>
-          <span>星体数量</span>
-          <strong>{stars.length}</strong>
+          <span>档案节点</span>
+          <strong>{archiveStars.length + archiveZones.reduce((sum, zone) => sum + zone.nodeCount, 0)}</strong>
         </div>
         <div>
           <span>章节</span>
@@ -815,8 +1353,16 @@ export default function EmotionGalaxy3D() {
           <strong>{selected.chapterTitle}</strong>
         </div>
         <div>
-          <span>星域</span>
+          <span>谱系区域</span>
           <strong>{selected.domain}</strong>
+        </div>
+        <div>
+          <span>龙血共鸣</span>
+          <strong>{resonance}%</strong>
+        </div>
+        <div>
+          <span>危险等级</span>
+          <strong>{riskLevel}</strong>
         </div>
         <div>
           <span>情绪强度</span>
@@ -824,33 +1370,65 @@ export default function EmotionGalaxy3D() {
         </div>
       </aside>
 
-      <article className={`detail${detailOpen ? "" : " is-collapsed"}`} aria-live="polite">
+      <aside className="zone-panel" aria-label="当前资料星域">
+        <div className="zone-panel-kicker">{activeZone.code}</div>
+        <h2>{activeZone.title}</h2>
+        <p>{activeZone.summary}</p>
+        <div>
+          <span>分类</span>
+          <strong>{activeZone.category}</strong>
+        </div>
+        <div>
+          <span>权限等级</span>
+          <strong>{activeZone.accessLevel}</strong>
+        </div>
+        <div>
+          <span>危险等级</span>
+          <strong>{activeZone.riskLevel}</strong>
+        </div>
+        <div>
+          <span>档案节点</span>
+          <strong>{activeZone.id === "text-emotions" ? archiveStars.length : activeZone.nodeCount}</strong>
+        </div>
+      </aside>
+
+      <article
+        className={`detail${detailOpen && activeZoneId === "text-emotions" ? "" : " is-collapsed"}`}
+        aria-live="polite"
+      >
         <div className="detail-meta">
-          <span>第 {selected.id + 1} 句</span>
+          <span>档案 #{String(selected.id + 1).padStart(4, "0")}</span>
           <span>
             {selected.emotion} · {selected.score.toFixed(2)}
           </span>
         </div>
         <div className="motifs">
-          {(selected.motifs.length ? selected.motifs : ["普通文本星"]).map((motif) => (
+          {(selected.motifs.length ? selected.motifs : ["普通情绪样本"]).map((motif) => (
             <span key={motif}>{motif}</span>
           ))}
+          <span>共鸣 {resonance}%</span>
+          <span>等级 {riskLevel}</span>
         </div>
         <p>{selected.text}</p>
         <div className="meter">
           <span
             style={{
               width: `${intensity}%`,
-              background: selected.color,
-              boxShadow: `0 0 18px ${selected.color}`
+              background: selectedColor,
+              boxShadow: `0 0 18px ${selectedColor}`
             }}
           />
         </div>
       </article>
 
-      <div className="hint">拖拽旋转 · 滚轮缩放 · 点击星星</div>
+      <div className="hint">拖拽解析 · 滚轮缩放 · 点击档案节点</div>
       <section className="intro" aria-hidden={!introActive}>
         <div className="intro-scrim" />
+        <div className="intro-system">
+          <span>NORMA ACCESS GRANTED</span>
+          <span>BLOODLINE TRACE DETECTED</span>
+          <span>LOADING CHAPTER ARCHIVES</span>
+        </div>
         <div className="intro-chapters" aria-hidden="true">
           {introChapters.map((chapter, index) => {
             const [x, y, rotation] = introChapterPositions[index];
@@ -865,6 +1443,7 @@ export default function EmotionGalaxy3D() {
 
             return (
               <span className="intro-chapter" key={chapter} style={style}>
+                <small>CHAPTER {String(index + 1).padStart(2, "0")}</small>
                 {chapter}
               </span>
             );
