@@ -20,7 +20,7 @@ export default function SGradeBadge({ variant = "s" }: { variant?: "s" | "emblem
     if (!canvas || !context) return;
 
     let frame = 0;
-    const size = 220;
+    const size = 300;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = size * dpr;
     canvas.height = size * dpr;
@@ -32,7 +32,7 @@ export default function SGradeBadge({ variant = "s" }: { variant?: "s" | "emblem
       const layer = Math.floor(index / 24);
       return {
         angle: Math.random() * Math.PI * 2,
-        radius: 48 + layer * 18 + Math.random() * 7,
+        radius: 78 + layer * 25 + Math.random() * 8,
         size: 1.35 + Math.random() * 2.4,
         speed: 0.006 + Math.random() * 0.009 + layer * 0.0022,
         offset: Math.random() * 100,
@@ -46,8 +46,9 @@ export default function SGradeBadge({ variant = "s" }: { variant?: "s" | "emblem
 
       particles.forEach((particle) => {
         particle.angle += particle.speed;
-        const x = center + Math.cos(particle.angle + particle.offset) * particle.radius;
-        const y = center + Math.sin(particle.angle * 0.72 + particle.offset * 0.5) * particle.radius * 0.82;
+        const orbitAngle = particle.angle + particle.offset;
+        const x = center + Math.cos(orbitAngle) * particle.radius;
+        const y = center + Math.sin(orbitAngle) * particle.radius * 0.94;
         const alpha = particle.alpha * (0.72 + 0.28 * Math.sin(performance.now() * 0.0018 + particle.offset));
         const glow = context.createRadialGradient(x, y, 0, x, y, particle.size * 4.2);
 

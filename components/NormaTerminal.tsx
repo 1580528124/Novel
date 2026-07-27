@@ -1,60 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import AuthAnimation from "@/components/AuthAnimation";
 import DragonScaleBackground from "@/components/DragonScaleBackground";
 import GoldenRippleButton from "@/components/GoldenRippleButton";
 import HoloTerminal3D from "@/components/HoloTerminal3D";
 import SGradeBadge from "@/components/SGradeBadge";
 
-function AuthSequence({ onComplete }: { onComplete: () => void }) {
-  return (
-    <main className="auth-sequence auth-ritual-screen is-gold-glow">
-      <DragonScaleBackground />
-      <div className="auth-eva-word" aria-hidden="true">
-        EVA
-      </div>
-      <div className="auth-corner-mark" aria-hidden="true">
-        <span>NORMA</span>
-        <small>身份验证协议</small>
-      </div>
-      <section className="auth-ritual">
-        <div className="auth-ritual-light" aria-hidden="true" />
-        <div className="auth-ritual-status">ACCESS REQUEST RECEIVED</div>
-        <div className="auth-school-emblem is-orbital" aria-hidden="true">
-          <img src="/cassell-emblem.png" alt="" />
-          <span />
-          <span />
-          <span />
-        </div>
-        <h1>路明非</h1>
-        <p>血统签名读取中 · 执行部专员 · 言灵未知</p>
-        <div className="auth-ritual-steps">
-          <span>连接卡塞尔中央数据库</span>
-          <span>校验 S 级血统权限</span>
-          <span>唤醒 EVA 全息接口</span>
-        </div>
-      </section>
-      <button type="button" className="auth-skip" onClick={onComplete}>
-        跳过
-      </button>
-      <div className="auth-complete" onAnimationEnd={onComplete} />
-    </main>
-  );
-}
-
-function AuthScreen({ onEnter }: { onEnter: () => void }) {
+function AuthScreen({ onEnter }: { onEnter: (agentName: string) => void }) {
   const [connecting, setConnecting] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [agentName, setAgentName] = useState("");
+  const displayName = agentName.trim() || "未知专员";
 
   if (connecting) {
-    return <AuthSequence onComplete={onEnter} />;
+    return <AuthAnimation userName={displayName} userId={displayName} onComplete={() => onEnter(displayName)} />;
   }
 
   return (
     <main className={`norma-auth auth-ritual-screen${focused ? " is-gold-glow" : ""}`}>
       <DragonScaleBackground />
       <div className="auth-eva-word" aria-hidden="true">
-        EVA
+        CASSELL
       </div>
       <div className="auth-corner-mark" aria-hidden="true">
         <span>NORMA</span>
@@ -66,13 +33,14 @@ function AuthScreen({ onEnter }: { onEnter: () => void }) {
       <section className="auth-identity-gate">
         <div className="auth-ritual-light" aria-hidden="true" />
         <div className="auth-protocol">身份验证协议已启动</div>
-        <p className="auth-waiting">正在等待 S 级血统签名</p>
+        <p className="auth-waiting">正在等待专员身份签名</p>
         <SGradeBadge variant="emblem" />
         <div className="auth-credential auth-input-row">
-          <label htmlFor="student-id">学员编号</label>
+          <label htmlFor="agent-name">专员</label>
           <input
-            id="student-id"
-            defaultValue="S20240001"
+            id="agent-name"
+            value={agentName}
+            onChange={(event) => setAgentName(event.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
           />
@@ -83,7 +51,7 @@ function AuthScreen({ onEnter }: { onEnter: () => void }) {
             <span>血统等级</span>
             <strong>未知</strong>
           </div>
-          <GoldenRippleButton onClick={() => setConnecting(true)}>建立连接</GoldenRippleButton>
+          <GoldenRippleButton onClick={() => setConnecting(true)}>进入卡塞尔</GoldenRippleButton>
         </div>
         <div className="auth-pending">ACCESS PENDING · 等待授权</div>
       </section>
@@ -99,7 +67,7 @@ function AuthScreen({ onEnter }: { onEnter: () => void }) {
           CONNECTION · STABLE
         </span>
         <span>12ms · AES-256-GCM</span>
-        <span>ACCESS PENDING · S 级权限</span>
+        <span>ACCESS PENDING · 权限未知</span>
       </div>
     </main>
   );
@@ -107,19 +75,27 @@ function AuthScreen({ onEnter }: { onEnter: () => void }) {
 
 export default function NormaTerminal() {
   const [authenticated, setAuthenticated] = useState(false);
+  const [agentName, setAgentName] = useState("未知专员");
 
   if (!authenticated) {
-    return <AuthScreen onEnter={() => setAuthenticated(true)} />;
+    return (
+      <AuthScreen
+        onEnter={(name) => {
+          setAgentName(name);
+          setAuthenticated(true);
+        }}
+      />
+    );
   }
 
   return (
     <main className="hologram-stage">
       <div className="hologram-secondary-status" aria-hidden="true">
         <span>v4.2.7</span>
-        <span>EVA ONLINE</span>
+        <span>CASSELL ONLINE</span>
         <span>12ms</span>
       </div>
-      <HoloTerminal3D />
+      <HoloTerminal3D agentName={agentName} />
     </main>
   );
 }

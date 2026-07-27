@@ -46,8 +46,13 @@ export default function DragonScaleBackground() {
           const x = col * scaleWidth + (row % 2) * (scaleWidth / 2) - scaleWidth;
           const y = row * scaleHeight * 0.78 - scaleHeight;
           const distance = Math.hypot(x - width / 2, y - height / 2);
-          const opacity = 0.018 + 0.055 * (1 - distance / maxDistance);
-          drawScale(x, y, Math.max(0.012, opacity));
+          const centerFade = Math.min(distance / (maxDistance * 0.62), 1);
+          const edgeBoost = Math.max(
+            0,
+            Math.max(1 - x / (width * 0.34), 1 - (width - x) / (width * 0.34), 1 - y / (height * 0.28))
+          );
+          const opacity = 0.012 + centerFade * 0.018 + edgeBoost * 0.06;
+          drawScale(x, y, Math.min(0.09, Math.max(0.006, opacity)));
         }
       }
     };
