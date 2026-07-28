@@ -76,6 +76,7 @@ function AuthScreen({ onEnter }: { onEnter: (agentName: string) => void }) {
 export default function NormaTerminal() {
   const [authenticated, setAuthenticated] = useState(false);
   const [agentName, setAgentName] = useState("未知专员");
+  const interfaceName = agentName.trim() === "芬格尔" ? "EVA" : "CASSELL";
 
   if (!authenticated) {
     return (
@@ -92,7 +93,7 @@ export default function NormaTerminal() {
     <main className="hologram-stage">
       <div className="hologram-secondary-status" aria-hidden="true">
         <span>v4.2.7</span>
-        <span>CASSELL ONLINE</span>
+        <span>{interfaceName} ONLINE</span>
         <span>12ms</span>
       </div>
       <HoloTerminal3D agentName={agentName} />
