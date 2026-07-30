@@ -7,6 +7,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import normaLoreData from "@/data/norma-lore.json";
+import type { AgentProfile } from "@/lib/agentProfile";
 
 type HoloModuleId =
   | "overview"
@@ -213,6 +214,12 @@ type ArchiveRecord = {
   detail: string;
   deepView?: DeepArchiveId;
 };
+
+function getRequiredArchiveId(moduleId: HoloModuleId, record: ArchiveRecord) {
+  if (moduleId !== "kings" || !record.deepView) return null;
+  if (record.deepView === "bronze_fire") return "archive-bronze-fire";
+  return `archive-${record.deepView}`;
+}
 
 type ArchiveBlueprint = {
   summary: string;
@@ -2362,7 +2369,15 @@ function HoloScene({ activeId, onSelect }: { activeId: HoloModuleId; onSelect: (
       <pointLight position={[4, 3.5, -3]} color="#6fae9a" intensity={0.36} />
       <pointLight position={[-4, 2.4, -3]} color="#b44c3f" intensity={0.18} />
       <CameraRig activeModule={activeModule} controlsRef={controlsRef} />
-      <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.06} enablePan minDistance={2.25} maxDistance={12} />
+      <OrbitControls
+        ref={controlsRef}
+        enableDamping
+        dampingFactor={0.06}
+        enablePan
+        enableZoom={activeId === "overview"}
+        minDistance={2.25}
+        maxDistance={12}
+      />
       <HoloArchiveFloor />
       <DeepField />
       <HoloEnergyLines activeId={activeId} />
@@ -3853,12 +3868,14 @@ function ArchivePanel({
   module,
   selectedRecord,
   onSelectRecord,
-  onOpenDeepArchive
+  onOpenDeepArchive,
+  profile
 }: {
   module: HoloModule;
   selectedRecord: ArchiveRecord | null;
   onSelectRecord: (record: ArchiveRecord) => void;
   onOpenDeepArchive: (id: DeepArchiveId, record?: ArchiveRecord) => void;
+  profile?: AgentProfile | null;
 }) {
   const loreModule = getLoreModule(module.loreId);
   const blueprint = archiveBlueprints[module.id];
@@ -3868,6 +3885,56 @@ function ArchivePanel({
 
   if (module.id === "missions") {
     return <MissionOperationsPanel module={module} onSelectRecord={onSelectRecord} onOpenDeepArchive={onOpenDeepArchive} />;
+  }
+
+  if (module.id === "identity" && profile) {
+    const missionScores = Object.values(profile.missionScores);
+    const reviewedArchives = profile.reviewedArchives ?? [];
+
+    return (
+      <section
+        className="identity-stage domain-stage domain-identity agent-dossier-inline"
+        style={{ "--holo-color": module.color } as CSSProperties}
+        aria-label="专员履历"
+      >
+        <div className="identity-light" aria-hidden="true" />
+        <span>AGENT DOSSIER / NORMA INTERNAL</span>
+        <strong>{profile.bloodRank}</strong>
+        <h1>{profile.name}</h1>
+        <p>{profile.agentId} / {profile.department} / CLEARANCE {profile.clearance}</p>
+        <div className="archive-metrics">
+          <span>{profile.completedMissions.length} MISSION RECORDED</span>
+          <span>{reviewedArchives.length} ARCHIVE REVIEWED</span>
+          <span>BLOOD RANK {profile.bloodRank}</span>
+        </div>
+        <div className="agent-inline-records">
+          <article>
+            <span>MISSION RECORDS</span>
+            {missionScores.length ? (
+              missionScores.map((score) => (
+                <em key={score.missionId}>MISSION-S / 夔门计划复盘 / RATING {score.rating} / SCORE {score.total}</em>
+              ))
+            ) : (
+              <em>暂无执行部复盘记录</em>
+            )}
+          </article>
+          <article>
+            <span>ARCHIVE REVIEWS</span>
+            {reviewedArchives.length ? (
+              reviewedArchives.map((archiveId) => (
+                <em key={archiveId}>{archiveId === "archive-bronze-fire" ? "KING-01 / 青铜与火之王初级档案" : archiveId} / REVIEWED</em>
+              ))
+            ) : (
+              <em>暂无档案审阅记录</em>
+            )}
+          </article>
+          <article>
+            <span>NORMA NOTE</span>
+            <em>该专员已完成基础王座级风险复盘。当前无强制派遣指令。</em>
+          </article>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -3899,26 +3966,43 @@ function ArchivePanel({
       </div>
       {blueprint ? (
         <div className="archive-record-grid">
-          {blueprint.records.map((record) => (
-            <button
-              key={record.title}
-              type="button"
-              className={`archive-record-card${record.deepView ? " has-deep-view" : ""}`}
-              onClick={() => {
-                if (record.deepView) {
-                  onOpenDeepArchive(record.deepView, record);
-                  return;
-                }
-                onSelectRecord(record);
-              }}
-            >
-              <header>
-                <span>{record.level}</span>
-                <strong>{record.status}</strong>
-              </header>
-              <h2>{record.title}</h2>
-            </button>
-          ))}
+          {blueprint.records.map((record) => {
+            const requiredArchiveId = getRequiredArchiveId(module.id, record);
+            const unlocked = !requiredArchiveId || Boolean(profile?.unlockedArchives.includes(requiredArchiveId));
+            const locked = Boolean(record.deepView && !unlocked);
+
+            return (
+              <button
+                key={record.title}
+                type="button"
+                className={`archive-record-card${record.deepView && unlocked ? " has-deep-view" : ""}${locked ? " is-locked" : ""}`}
+                onClick={() => {
+                  if (locked) {
+                    onSelectRecord({
+                      ...record,
+                      status: requiredArchiveId === "archive-bronze-fire" ? "SEALED / CLEARANCE 2 REQUIRED" : "SEALED / HIGHER CLEARANCE",
+                      detail:
+                        requiredArchiveId === "archive-bronze-fire"
+                          ? "NORMA 拒绝访问。完成 MISSION-S / 夔门计划复盘后，KING-01 初级档案将开放。"
+                          : "NORMA 拒绝访问。该王座档案仍处于高级封存状态，当前专员权限不足。"
+                    });
+                    return;
+                  }
+                  if (record.deepView) {
+                    onOpenDeepArchive(record.deepView, record);
+                    return;
+                  }
+                  onSelectRecord(record);
+                }}
+              >
+                <header>
+                  <span>{record.level}</span>
+                  <strong>{locked ? "SEALED" : record.status}</strong>
+                </header>
+                <h2>{record.title}</h2>
+              </button>
+            );
+          })}
         </div>
       ) : null}
     </section>
@@ -3939,22 +4023,109 @@ function ArchiveDetailDrawer({ module, record }: { module: HoloModule; record: A
   );
 }
 
-function OverviewPanel({ agentName, interfaceName }: { agentName: string; interfaceName: string }) {
+function OverviewPanel({
+  agentName,
+  interfaceName,
+  profile,
+  operationCompleted,
+  onStartOperation,
+  onOpenKingArchive,
+  onOpenDossier,
+  workdeskOpen,
+  onToggleWorkdesk
+}: {
+  agentName: string;
+  interfaceName: string;
+  profile?: AgentProfile | null;
+  operationCompleted?: boolean;
+  onStartOperation?: () => void;
+  onOpenKingArchive?: () => void;
+  onOpenDossier?: () => void;
+  workdeskOpen?: boolean;
+  onToggleWorkdesk?: () => void;
+}) {
   const totalEvidence = lore.evidence.length;
   const booksLabel = lore.books.map((book) => `ⅠⅡⅢⅣⅤ`[book.book_index - 1] ?? String(book.book_index)).join(" / ");
+  const missionCount = profile?.completedMissions.length ?? 0;
+  const latestScore = profile ? Object.values(profile.missionScores).at(-1) : null;
+  const kingReviewed = Boolean(profile?.reviewedArchives?.includes("archive-bronze-fire"));
+  const directiveTitle = !operationCompleted
+    ? "MISSION-S / 夔门计划复盘"
+    : kingReviewed
+      ? "NORMA WORK DESK / 当前无强制任务"
+      : "KING-01 初级档案已开放";
+  const directiveCopy = !operationCompleted
+    ? "执行部下发复盘任务。审阅证据链，提交专员判断报告。"
+    : kingReviewed
+      ? "KING-01 初级审阅已记录。系统存在若干可复核事项，但当前没有强制派遣指令。"
+      : "夔门计划复盘已写入专员履历。建议审阅青铜与火之王档案。";
+  const primaryAction = kingReviewed && onOpenDossier ? onOpenDossier : operationCompleted && !kingReviewed && onOpenKingArchive ? onOpenKingArchive : onStartOperation;
+  const primaryLabel = !operationCompleted ? "审阅任务包" : kingReviewed ? "打开专员履历" : "进入 KING-01 档案";
 
   return (
-    <section className="identity-stage domain-stage domain-overview" style={{ "--holo-color": "#d9c27a" } as CSSProperties}>
-      <div className="identity-light" aria-hidden="true" />
-      <strong>S</strong>
-      <h1>{agentName}</h1>
-      <p>专员 · 执行部 · {interfaceName} 接口</p>
-      <div className="archive-metrics overview-metrics">
-        <span>{booksLabel} 已接入</span>
-        <span>{totalEvidence} 条证据</span>
-        <span>ACCESS LEVEL S</span>
-      </div>
-    </section>
+    <>
+      <section className="identity-stage domain-stage domain-overview" style={{ "--holo-color": "#d9c27a" } as CSSProperties}>
+        <div className="identity-light" aria-hidden="true" />
+        <strong>S</strong>
+        <h1>{agentName}</h1>
+        <p>专员 · 执行部 · {interfaceName} 接口</p>
+        <div className="archive-metrics overview-metrics">
+          <span>{booksLabel} 已接入</span>
+          <span>{totalEvidence} 条证据</span>
+          <span>ACCESS LEVEL {profile?.clearance ?? "S"}</span>
+          {profile ? <span>{profile.agentId}</span> : null}
+          {profile ? <span>{missionCount} MISSION RECORDED</span> : null}
+          {latestScore ? <span>LAST RATING {latestScore.rating}</span> : null}
+        </div>
+        {onStartOperation && !kingReviewed ? (
+          <div className={`overview-operation-directive${operationCompleted ? " is-archived" : ""}`}>
+            <span>NORMA DIRECTIVE</span>
+            <h2>{directiveTitle}</h2>
+            <p>{directiveCopy}</p>
+            {operationCompleted && profile ? (
+              <em className="overview-system-log">[NORMA] {profile.agentId} / CLEARANCE {profile.clearance} / KING-01 OPEN</em>
+            ) : null}
+            <button type="button" onClick={primaryAction}>
+              {primaryLabel}
+            </button>
+          </div>
+        ) : null}
+      </section>
+      {onStartOperation && kingReviewed ? (
+        <aside className={`overview-workdesk-panel${workdeskOpen ? " is-open" : " is-collapsed"}`} aria-label="NORMA 工作台">
+          <button type="button" className="overview-workdesk-toggle" onClick={onToggleWorkdesk} aria-expanded={workdeskOpen}>
+            <span>WORK DESK</span>
+            <strong>{workdeskOpen ? "收起" : "3 项"}</strong>
+          </button>
+          {workdeskOpen ? (
+            <div className="overview-workdesk-body">
+              <span>NORMA WORK DESK</span>
+              <h2>通讯频道已建立</h2>
+              {profile ? (
+                <em className="overview-system-log">[NORMA] {profile.agentId} / CLEARANCE {profile.clearance} / WORK DESK STABLE</em>
+              ) : null}
+              <div className="norma-dialogue" aria-label="NORMA 通讯">
+                <p>
+                  <strong>NORMA</strong>
+                  <span>专员，当前没有强制派遣指令。你可以保持在线，或进入履历复核已归档任务。</span>
+                </p>
+                <p>
+                  <strong>NORMA</strong>
+                  <span>KING-01 初级审阅已记录。相关访问权限将保留在你的专员档案中。</span>
+                </p>
+                <p className="is-muted">
+                  <strong>SYSTEM</strong>
+                  <span>BJ-METRO-07 被标记为城市异常记录。该事项尚未生成执行部任务。</span>
+                </p>
+              </div>
+              <button type="button" onClick={primaryAction}>
+                {primaryLabel}
+              </button>
+            </div>
+          ) : null}
+        </aside>
+      ) : null}
+    </>
   );
 }
 
@@ -3986,17 +4157,42 @@ function MissionLaunchOverlay({ launch }: { launch: MissionLaunchState }) {
   );
 }
 
-export default function HoloTerminal3D({ agentName = "未知专员" }: { agentName?: string }) {
+export default function HoloTerminal3D({
+  agentName = "未知专员",
+  profile,
+  operationCompleted = false,
+  onStartOperation,
+  onOpenDossier,
+  onArchiveReviewed
+}: {
+  agentName?: string;
+  profile?: AgentProfile | null;
+  operationCompleted?: boolean;
+  onStartOperation?: () => void;
+  onOpenDossier?: () => void;
+  onArchiveReviewed?: (archiveId: string) => void;
+}) {
   const [activePreset, setActivePreset] = useState<HoloModuleId>("overview");
   const [selectedRecord, setSelectedRecord] = useState<ArchiveRecord | null>(null);
   const [activeDeepArchive, setActiveDeepArchive] = useState<DeepArchiveId | null>(null);
   const [missionLaunch, setMissionLaunch] = useState<MissionLaunchState | null>(null);
+  const [workdeskOpen, setWorkdeskOpen] = useState(false);
   const activeModule = modules.find((module) => module.id === activePreset) ?? modules[0];
   const isFinger = agentName.trim() === "芬格尔";
   const interfaceName = isFinger ? "EVA" : "NORMA";
   const coreName = isFinger ? "EVA CORE" : "NORMA CORE";
   const terminalMode = isFinger ? "eva" : "norma";
   const inDeepArchive = activeDeepArchive !== null;
+  const openKingArchive = () => {
+    setSelectedRecord(null);
+    setActivePreset("kings");
+    setActiveDeepArchive("bronze_fire");
+  };
+  const openIdentityDossier = () => {
+    setSelectedRecord(null);
+    setActiveDeepArchive(null);
+    setActivePreset("identity");
+  };
   const openDeepArchive = (id: DeepArchiveId, record?: ArchiveRecord) => {
     setSelectedRecord(null);
     if (id.startsWith("mission_") && record) {
@@ -4036,6 +4232,7 @@ export default function HoloTerminal3D({ agentName = "未知专员" }: { agentNa
       {activeDeepArchive === "bronze_fire" ? (
         <BronzeFireArchive
           onClose={() => {
+            onArchiveReviewed?.("archive-bronze-fire");
             setActiveDeepArchive(null);
             setActivePreset("kings");
             setSelectedRecord(null);
@@ -4112,13 +4309,24 @@ export default function HoloTerminal3D({ agentName = "未知专员" }: { agentNa
       ) : (
         <>
           {activeModule.id === "overview" ? (
-            <OverviewPanel agentName={agentName} interfaceName={interfaceName} />
+            <OverviewPanel
+              agentName={agentName}
+              interfaceName={interfaceName}
+              profile={profile}
+              operationCompleted={operationCompleted}
+              onStartOperation={onStartOperation}
+              onOpenKingArchive={openKingArchive}
+              onOpenDossier={onOpenDossier ?? openIdentityDossier}
+              workdeskOpen={workdeskOpen}
+              onToggleWorkdesk={() => setWorkdeskOpen((open) => !open)}
+            />
           ) : (
             <ArchivePanel
               module={activeModule}
               selectedRecord={selectedRecord}
               onSelectRecord={setSelectedRecord}
               onOpenDeepArchive={openDeepArchive}
+              profile={profile}
             />
           )}
           {activeModule.id !== "overview" && selectedRecord ? <ArchiveDetailDrawer module={activeModule} record={selectedRecord} /> : null}

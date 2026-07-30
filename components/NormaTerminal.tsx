@@ -5,7 +5,22 @@ import AuthAnimation from "@/components/AuthAnimation";
 import DragonScaleBackground from "@/components/DragonScaleBackground";
 import GoldenRippleButton from "@/components/GoldenRippleButton";
 import HoloTerminal3D from "@/components/HoloTerminal3D";
+import InternalCommsPanel from "@/components/InternalCommsPanel";
+import OperationBriefing, { type Operation } from "@/components/OperationBriefing";
 import SGradeBadge from "@/components/SGradeBadge";
+import evidencePacketsData from "@/data/evidence-packets.json";
+import operationsData from "@/data/operations.json";
+import {
+  completeMission,
+  createAgentProfile,
+  loadAgentProfile,
+  reviewArchive,
+  saveAgentProfile,
+  touchAgentProfile,
+  type AgentProfile,
+  type MissionScore
+} from "@/lib/agentProfile";
+import type { EvidencePacket } from "@/components/EvidencePacketViewer";
 
 function AuthScreen({ onEnter }: { onEnter: (agentName: string) => void }) {
   const [connecting, setConnecting] = useState(false);
@@ -76,14 +91,42 @@ function AuthScreen({ onEnter }: { onEnter: (agentName: string) => void }) {
 export default function NormaTerminal() {
   const [authenticated, setAuthenticated] = useState(false);
   const [agentName, setAgentName] = useState("未知专员");
+  const [profile, setProfile] = useState<AgentProfile | null>(null);
+  const [activeView, setActiveView] = useState<"terminal" | "operation">("terminal");
   const interfaceName = agentName.trim() === "芬格尔" ? "EVA" : "CASSELL";
+  const operation = (operationsData as Operation[])[0];
+  const evidencePackets = evidencePacketsData as EvidencePacket[];
+  const operationCompleted = profile?.completedMissions.includes(operation.id) ?? false;
+
+  const activateProfile = (name: string) => {
+    const existing = loadAgentProfile();
+    const nextProfile = existing ? touchAgentProfile(existing, name) : createAgentProfile(name);
+    saveAgentProfile(nextProfile);
+    setProfile(nextProfile);
+    setAgentName(nextProfile.name);
+    setAuthenticated(true);
+    setActiveView("terminal");
+  };
+
+  const handleMissionComplete = (score: MissionScore) => {
+    if (!profile) return;
+    const nextProfile = completeMission(profile, operation.id, score, operation.unlocks);
+    saveAgentProfile(nextProfile);
+    setProfile(nextProfile);
+  };
+
+  const handleArchiveReviewed = (archiveId: string) => {
+    if (!profile) return;
+    const nextProfile = reviewArchive(profile, archiveId);
+    saveAgentProfile(nextProfile);
+    setProfile(nextProfile);
+  };
 
   if (!authenticated) {
     return (
       <AuthScreen
         onEnter={(name) => {
-          setAgentName(name);
-          setAuthenticated(true);
+          activateProfile(name);
         }}
       />
     );
@@ -96,7 +139,25 @@ export default function NormaTerminal() {
         <span>{interfaceName} ONLINE</span>
         <span>12ms</span>
       </div>
-      <HoloTerminal3D agentName={agentName} />
+      <InternalCommsPanel profile={profile} />
+      <div className={activeView === "operation" ? "terminal-input-suspended" : ""}>
+        <HoloTerminal3D
+          agentName={agentName}
+          profile={profile}
+          operationCompleted={operationCompleted}
+          onStartOperation={() => setActiveView("operation")}
+          onArchiveReviewed={handleArchiveReviewed}
+        />
+      </div>
+      {activeView === "operation" && profile ? (
+        <OperationBriefing
+          profile={profile}
+          operation={operation}
+          evidencePackets={evidencePackets}
+          onComplete={handleMissionComplete}
+          onClose={() => setActiveView("terminal")}
+        />
+      ) : null}
     </main>
   );
 }
