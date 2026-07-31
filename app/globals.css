@@ -8546,20 +8546,21 @@ button:disabled:hover {
 .surveillance-earth-wrap {
   position: relative;
   justify-self: center;
-  width: min(560px, 100%);
-  aspect-ratio: 1;
+  width: min(600px, 100%);
+  height: min(500px, calc(100vh - 260px));
   min-height: 0;
   border: 1px solid rgba(116, 125, 255, 0.22);
-  background:
-    radial-gradient(circle at 50% 48%, rgba(121, 126, 255, 0.16), transparent 58%),
-    #040d21;
+  background: #16181d !important;
+  opacity: 1;
+  isolation: isolate;
   overflow: hidden;
 }
 
 .surveillance-earth-canvas {
   position: absolute;
   inset: 0;
-  background: #040d21;
+  background: #16181d !important;
+  opacity: 1;
   cursor: grab;
   touch-action: none;
 }
@@ -8577,16 +8578,15 @@ button:disabled:hover {
 .surveillance-globestream-stage {
   position: absolute;
   inset: 0;
-  background: #040d21;
+  background: #16181d !important;
+  opacity: 1;
 }
 
 .surveillance-globestream-stage::after {
   position: absolute;
   inset: 0;
   content: "";
-  background:
-    radial-gradient(circle at 50% 50%, transparent 0 62%, rgba(0, 0, 0, 0.04) 88%),
-    linear-gradient(180deg, rgba(121, 126, 255, 0.025), transparent 24%, transparent 80%, rgba(205, 121, 255, 0.025));
+  background: none;
   pointer-events: none;
 }
 
@@ -8594,10 +8594,9 @@ button:disabled:hover {
   display: block;
   width: 100% !important;
   height: 100% !important;
-  filter:
-    brightness(1.08)
-    saturate(1.08)
-    drop-shadow(0 0 4px rgba(121, 126, 255, 0.28));
+  filter: none;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
 }
 
 .surveillance-scanline {
@@ -8608,6 +8607,7 @@ button:disabled:hover {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(137, 226, 211, 0.68), transparent);
   box-shadow: 0 0 18px rgba(72, 214, 194, 0.34);
+  display: none;
   animation: surveillance-scan 3.8s ease-in-out infinite;
 }
 

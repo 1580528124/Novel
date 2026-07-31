@@ -2058,6 +2058,33 @@ const normaWorldFeatureCollection = feature(
   (worldAtlas as any).objects.countries
 ) as unknown as FeatureCollection;
 
+const globeStreamDemoFlyLines = [
+  { from: { id: "1", lon: -23.0075, lat: 50.4296 }, to: { id: "2", lon: 26.1223, lat: -7.8756 } },
+  {
+    from: { lon: 142.8123, lat: -58.9813, style: { color: "yellow" } },
+    to: { lon: 157.0064, lat: 10.7816, style: { color: "yellow" } },
+    style: { pathStyle: { color: "yellow" }, flyLineStyle: { color: "yellow" } }
+  },
+  { from: { lon: -175.6286, lat: 72.8359 }, to: { lon: -39.071, lat: -35.438 } },
+  { from: { lon: 178.7439, lat: 25.8303 }, to: { lon: 137.19, lat: 17.118 } },
+  { from: { lon: -162.6725, lat: 37.277 }, to: { lon: -37.1681, lat: 38.5162 } },
+  { from: { lon: -7.5945, lat: 37.2754 }, to: { lon: 41.4114, lat: 41.5946 } }
+];
+
+const globeStreamDemoPoints = [{ lon: -43.0075, lat: -40.4296, style: { color: "yellow" } }];
+
+const globeStreamDemoRoads = [
+  {
+    id: "7-6",
+    path: [
+      { lon: -23.0075, lat: 50.4296 },
+      { lon: -26.1223, lat: -7.8756 },
+      { lon: 115.7, lat: 39.4 },
+      { lon: -23.0075, lat: 50.4296 }
+    ]
+  }
+];
+
 function HoloArchiveFloor() {
   const rings = useMemo(() => {
     return [1.15, 1.9, 2.75, 3.7, 4.9].map((radius, index) => {
@@ -4115,6 +4142,7 @@ function GlobeStreamEarth({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onOpenRef = useRef(onOpenAnomaly);
+  const draggingRef = useRef(false);
 
   useEffect(() => {
     onOpenRef.current = onOpenAnomaly;
@@ -4126,6 +4154,7 @@ function GlobeStreamEarth({
 
     let chart: any = null;
     let cancelled = false;
+    let rotationFrame: number | null = null;
 
     async function mountGlobe() {
       const earthFlyLine = (await import("earth-flyline")).default;
@@ -4141,67 +4170,58 @@ function GlobeStreamEarth({
         mode: "3d",
         cameraType: "OrthographicCamera",
         controls: "custom",
-        autoRotate: true,
-        rotateSpeed: 0.0012,
-          config: {
-            R: 160,
-            enableZoom: false,
-            zoom: 0.92,
-            flyLineRFactor: 0.2,
-            bgStyle: {
-              color: "#040D21",
-              opacity: 1
-            },
-            earth: {
-              color: "#13162c",
-              material: "MeshPhongMaterial",
+        autoRotate: false,
+        rotateSpeed: 0,
+        config: {
+          R: 160,
+          enableZoom: false,
+          zoom: 1,
+          bgStyle: {
+            color: "#16181d",
+            opacity: 0
+          },
+          earth: {
+            color: "#13162c",
+            material: "MeshPhongMaterial",
             dragConfig: {
               rotationSpeed: 1,
-              inertiaFactor: 0.92,
-              panSpeed: 0,
-              disableX: false,
+              inertiaFactor: 0.95,
               disableY: true
             }
-            },
-            mapStyle: {
-              areaColor: "#2e3564",
-              lineColor: "#797eff",
-              opacity: 1,
-              material: "MeshBasicMaterial"
-            },
-            hoverRegionStyle: {
-              show: true,
-              areaColor: "#cd79ff",
-            opacity: 1,
-            material: "MeshBasicMaterial"
           },
-            scatterStyle: {
-              color: "#cd79ff",
-              show: true,
-              size: 5
-            },
-            spriteStyle: {
-              color: "#797eff",
-              show: true
+          mapStyle: {
+            areaColor: "#2e3564",
+            lineColor: "#797eff"
+          },
+          spriteStyle: {
+            color: "#16181d",
+            show: false
+          },
+          pathStyle: {
+            color: "#cd79ff"
+          },
+          flyLineStyle: {
+            color: "#cd79ff"
+          },
+          roadStyle: {
+            flyLineStyle: {
+              color: "#cd79ff"
             },
             pathStyle: {
-              color: "#cd79ff",
-              show: true,
-              size: 1
-            },
-            flyLineStyle: {
-              color: "#cd79ff",
-              size: 3
+              color: "#cd79ff"
             }
+          },
+          scatterStyle: {
+            color: "#cd79ff"
+          },
+          wallStyle: {
+            color: "#cd79ff",
+            opacity: 0.5
           }
+        }
       } as any);
       chart = globe;
 
-      if ((globe.camera as any)?.isOrthographicCamera) {
-        globe.camera.position.set(0, 0, 500);
-        globe.camera.lookAt(0, 0, 0);
-        (globe.camera as any).updateProjectionMatrix?.();
-      }
       if (globe.mainContainer) {
         globe.mainContainer.rotation.x = 0;
         globe.mainContainer.rotation.z = 0;
@@ -4215,98 +4235,39 @@ function GlobeStreamEarth({
         };
       }
 
-      globe.mainContainer?.traverse?.((object: any) => {
-        const isCountryLine = object?.type === "LineLoop" || object?.isLine;
-        if (isCountryLine && object.material) {
-          object.material.color?.set?.("#797eff");
-          object.material.opacity = 1;
-          object.material.transparent = true;
-          object.material.depthTest = true;
-          object.material.depthWrite = false;
-          object.material.needsUpdate = true;
-          object.renderOrder = 40;
+      const rotateGlobe = () => {
+        if (cancelled) return;
+        if (globe.mainContainer && !draggingRef.current) {
+          globe.mainContainer.rotation.y -= 0.0014;
+          globe.mainContainer.rotation.x = 0;
+          globe.mainContainer.rotation.z = 0;
         }
-        if (object?.userData?.type === "country" && object.material) {
-          object.material.color?.set?.("#2e3564");
-          object.material.opacity = 1;
-          object.material.needsUpdate = true;
-        }
-      });
+        rotationFrame = requestAnimationFrame(rotateGlobe);
+      };
+      rotateGlobe();
 
-      const glowLines: any[] = [];
-      globe.mainContainer?.traverse?.((object: any) => {
-        const isCountryLine = object?.type === "LineLoop" || object?.isLine;
-        if (!isCountryLine || !object.material || !object.parent) return;
+      globe.renderer?.setClearColor?.("#16181d", 1);
+      await globe.addData?.("point", globeStreamDemoPoints);
+      await globe.addData?.("road", globeStreamDemoRoads);
+      await globe.addData?.("flyLine", globeStreamDemoFlyLines);
 
-        const brightLine = object.clone();
-        brightLine.material = object.material.clone();
-        brightLine.material.color?.set?.("#797eff");
-        brightLine.material.opacity = 0.82;
-        brightLine.material.transparent = true;
-        brightLine.material.depthTest = true;
-        brightLine.material.depthWrite = false;
-        brightLine.renderOrder = 50;
+      const china = (normaWorldFeatureCollection.features as any[]).find((item) => item.properties?.name === "China");
+      const chinaCoordinates = china?.geometry?.coordinates ?? [];
+      for (const coordinates of chinaCoordinates) {
+        await globe.addData?.("mapStreamLine", { data: coordinates, style: { opacity: 1 } });
+      }
 
-        const glowLine = object.clone();
-        glowLine.material = object.material.clone();
-        glowLine.material.color?.set?.("#797eff");
-        glowLine.material.opacity = 0.42;
-        glowLine.material.transparent = true;
-        glowLine.material.depthTest = true;
-        glowLine.material.depthWrite = false;
-        glowLine.scale.multiplyScalar(1.003);
-        glowLine.renderOrder = 45;
-
-        glowLines.push({ parent: object.parent, lines: [glowLine, brightLine] });
-      });
-      glowLines.forEach(({ parent, lines }) => parent.add(...lines));
-
-      await globe.setData?.(
+      await globe.addData?.(
         "point",
-        anomalies.map((item) => {
-          const locked = clearance < item.clearance;
-          return {
-            id: item.code,
-            code: item.code,
-            lon: item.lon,
-            lat: item.lat,
-            style: {
-              color: locked ? "#776f68" : item.tone,
-              size: locked ? 3 : 4,
-              show: true
-            }
-          };
-        })
-      );
-
-      await globe.setData?.(
-        "flyLine",
-        [
-          {
-            from: { id: "NORMANDY-LINK", lon: 2.3522, lat: 48.8566 },
-            to: { id: "BJ-METRO-07", lon: 116.4074, lat: 39.9042 },
-            style: {
-              pathStyle: { color: "#cd79ff", size: 1, show: true },
-              flyLineStyle: { color: "#cd79ff", size: 3 }
-            }
-          },
-          {
-            from: { id: "NORMANDY-LINK", lon: 2.3522, lat: 48.8566 },
-            to: { id: "GR-ICE-04", lon: -38, lat: 72 },
-            style: {
-              pathStyle: { color: "#cd79ff", size: 1, show: true },
-              flyLineStyle: { color: "#cd79ff", size: 3 }
-            }
-          },
-          {
-            from: { id: "NORMANDY-LINK", lon: 2.3522, lat: 48.8566 },
-            to: { id: "JP-REDWELL-11", lon: 139.6503, lat: 35.6762 },
-            style: {
-              pathStyle: { color: "#cd79ff", size: 1, show: true },
-              flyLineStyle: { color: "#cd79ff", size: 3 }
-            }
+        anomalies.map((item) => ({
+          id: item.code,
+          code: item.code,
+          lon: item.lon,
+          lat: item.lat,
+          style: {
+            color: clearance < item.clearance ? "#776f68" : "#cd79ff"
           }
-        ]
+        }))
       );
 
       globe.on?.("click", (_event: Event, mesh?: { userData?: Record<string, unknown> }) => {
@@ -4321,6 +4282,7 @@ function GlobeStreamEarth({
 
     return () => {
       cancelled = true;
+      if (rotationFrame !== null) cancelAnimationFrame(rotationFrame);
       chart?.destroy?.();
       if (container) container.innerHTML = "";
     };
@@ -4330,9 +4292,24 @@ function GlobeStreamEarth({
     <div
       ref={containerRef}
       className="surveillance-globestream-stage"
-      onPointerDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => {
+        draggingRef.current = true;
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        event.stopPropagation();
+      }}
       onPointerMove={(event) => event.stopPropagation()}
-      onPointerUp={(event) => event.stopPropagation()}
+      onPointerUp={(event) => {
+        draggingRef.current = false;
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+        event.stopPropagation();
+      }}
+      onPointerCancel={(event) => {
+        draggingRef.current = false;
+        event.stopPropagation();
+      }}
+      onPointerLeave={(event) => {
+        if (event.buttons === 0) draggingRef.current = false;
+      }}
       onWheel={(event) => event.stopPropagation()}
     />
   );
