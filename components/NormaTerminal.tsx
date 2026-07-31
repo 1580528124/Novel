@@ -14,6 +14,7 @@ import {
   completeMission,
   createAgentProfile,
   loadAgentProfile,
+  recordAccessLog,
   reviewArchive,
   saveAgentProfile,
   touchAgentProfile,
@@ -122,6 +123,13 @@ export default function NormaTerminal() {
     setProfile(nextProfile);
   };
 
+  const handleAccessLog = (log: Parameters<typeof recordAccessLog>[1]) => {
+    if (!profile) return;
+    const nextProfile = recordAccessLog(profile, log);
+    saveAgentProfile(nextProfile);
+    setProfile(nextProfile);
+  };
+
   if (!authenticated) {
     return (
       <AuthScreen
@@ -147,6 +155,7 @@ export default function NormaTerminal() {
           operationCompleted={operationCompleted}
           onStartOperation={() => setActiveView("operation")}
           onArchiveReviewed={handleArchiveReviewed}
+          onAccessLog={handleAccessLog}
         />
       </div>
       {activeView === "operation" && profile ? (

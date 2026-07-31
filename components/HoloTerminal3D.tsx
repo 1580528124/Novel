@@ -6,8 +6,11 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { CSSProperties, ReactNode } from "react";
 import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { feature } from "topojson-client";
+import type { FeatureCollection } from "geojson";
 import normaLoreData from "@/data/norma-lore.json";
-import type { AgentProfile } from "@/lib/agentProfile";
+import worldAtlas from "world-atlas/countries-50m.json";
+import type { AccessLog, AgentProfile } from "@/lib/agentProfile";
 
 type HoloModuleId =
   | "overview"
@@ -215,10 +218,108 @@ type ArchiveRecord = {
   deepView?: DeepArchiveId;
 };
 
+type SurveillanceAnomaly = {
+  code: string;
+  title: string;
+  level: string;
+  status: string;
+  location: string;
+  coordinate: string;
+  signal: string;
+  clearance: AgentProfile["clearance"];
+  lat: number;
+  lon: number;
+  tone: string;
+  summary: string;
+  norma: string;
+  recommendation: string;
+};
+
+const surveillanceAnomalies: SurveillanceAnomaly[] = [
+  {
+    code: "BJ-METRO-07",
+    title: "北京地铁疑似尼伯龙根异常",
+    level: "CITY-A",
+    status: "PENDING REVIEW",
+    location: "北京 / 地铁环线",
+    coordinate: "39.9042N / 116.4074E",
+    signal: "空间折返 / 低频龙文残响",
+    clearance: 2,
+    lat: 39.9042,
+    lon: 116.4074,
+    tone: "#d8bd66",
+    summary: "城市交通节点出现重复折返样本，乘客证词与摄像头时间戳存在轻微错位。NORMA 已将该项归入预警网格，不生成强制执行任务。",
+    norma: "疑似尼伯龙根边缘化现象，暂未观测到高危龙类实体活动。",
+    recommendation: "保留执行部旁路监听，等待二次证据交叉验证。"
+  },
+  {
+    code: "GR-ICE-04",
+    title: "格陵兰冰海封存波动",
+    level: "ARCHIVE-A",
+    status: "WATCH",
+    location: "格陵兰海域",
+    coordinate: "72.0000N / 38.0000W",
+    signal: "低温炼金场 / 沉眠噪声",
+    clearance: 2,
+    lat: 72,
+    lon: -38,
+    tone: "#6fb7ff",
+    summary: "冰海节点能量场存在周期性涨落，但波峰仍低于执行部干预阈值。",
+    norma: "与历史封存记录存在弱相关，建议保持远程监控。",
+    recommendation: "维持卫星链路，不派遣地面小组。"
+  },
+  {
+    code: "CSL-GATE-02",
+    title: "学院门禁异常访问",
+    level: "CAMPUS-B",
+    status: "RESOLVED",
+    location: "卡塞尔学院 / 中央控制区",
+    coordinate: "41.8781N / 87.6298W",
+    signal: "权限请求重放 / EVA 过滤",
+    clearance: 1,
+    lat: 41.8781,
+    lon: -87.6298,
+    tone: "#79d6bd",
+    summary: "一次低级权限请求被系统识别为重放包，未进入真实档案层。",
+    norma: "异常已平息，写入专员审计日志。",
+    recommendation: "无需处理。"
+  },
+  {
+    code: "JP-REDWELL-11",
+    title: "日本红井遗留风险",
+    level: "REGION-S",
+    status: "SEALED",
+    location: "日本 / 近海封存区",
+    coordinate: "35.6762N / 139.6503E",
+    signal: "高密度龙血样本 / 封存档案",
+    clearance: 3,
+    lat: 35.6762,
+    lon: 139.6503,
+    tone: "#c95e4c",
+    summary: "红井相关记录仍处于封存状态，仅允许高权限专员读取摘要。",
+    norma: "该异常与区域级污染风险相关，当前专员权限不足时仅显示预警标题。",
+    recommendation: "申请执行部授权后再查看完整记录。"
+  }
+];
+
 function getRequiredArchiveId(moduleId: HoloModuleId, record: ArchiveRecord) {
   if (moduleId !== "kings" || !record.deepView) return null;
   if (record.deepView === "bronze_fire") return "archive-bronze-fire";
   return `archive-${record.deepView}`;
+}
+
+function getRequiredClearance(moduleId: HoloModuleId, record: ArchiveRecord) {
+  if (!record.deepView) return 1;
+  if (moduleId === "kings") {
+    if (record.deepView === "bronze_fire") return 2;
+    if (record.deepView === "earth_mountain") return 3;
+    return 4;
+  }
+  if (moduleId === "missions") {
+    if (record.level.includes("MISSION-SS")) return 3;
+    return 2;
+  }
+  return 1;
 }
 
 type ArchiveBlueprint = {
@@ -1952,6 +2053,11 @@ function createGlowTexture(size = 128) {
   return new THREE.CanvasTexture(canvas);
 }
 
+const normaWorldFeatureCollection = feature(
+  worldAtlas as any,
+  (worldAtlas as any).objects.countries
+) as unknown as FeatureCollection;
+
 function HoloArchiveFloor() {
   const rings = useMemo(() => {
     return [1.15, 1.9, 2.75, 3.7, 4.9].map((radius, index) => {
@@ -3108,11 +3214,15 @@ function OceanWaterArchive({ onClose }: { onClose: () => void }) {
 function MissionOperationsPanel({
   module,
   onSelectRecord,
-  onOpenDeepArchive
+  onOpenDeepArchive,
+  profile,
+  onAccessLog
 }: {
   module: HoloModule;
   onSelectRecord: (record: ArchiveRecord) => void;
   onOpenDeepArchive: (id: DeepArchiveId, record?: ArchiveRecord) => void;
+  profile?: AgentProfile | null;
+  onAccessLog?: (log: Omit<AccessLog, "id" | "at">) => void;
 }) {
   const blueprint = archiveBlueprints.missions;
   const records = blueprint?.records ?? [];
@@ -3125,27 +3235,52 @@ function MissionOperationsPanel({
         <p>任务队列只显示行动代号、风险等级、最终状态和诺玛封存标记。点击已解封任务进入作战复盘。</p>
       </div>
       <div className="mission-ops-grid">
-        {records.map((record, index) => (
-          <button
-            key={record.title}
-            type="button"
-            className={`mission-card${record.deepView ? " has-deep-view" : ""}`}
-            onClick={() => {
-              if (record.deepView) {
-                onOpenDeepArchive(record.deepView, record);
-                return;
-              }
-              onSelectRecord(record);
-            }}
-          >
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <header>
-              <strong>{record.level}</strong>
-              <em>{record.status}</em>
-            </header>
-            <h2>{record.title}</h2>
-          </button>
-        ))}
+        {records.map((record, index) => {
+          const requiredClearance = getRequiredClearance("missions", record);
+          const locked = Boolean(record.deepView && (profile?.clearance ?? 1) < requiredClearance);
+
+          return (
+            <button
+              key={record.title}
+              type="button"
+              className={`mission-card${record.deepView && !locked ? " has-deep-view" : ""}${locked ? " is-locked" : ""}`}
+              onClick={() => {
+                if (record.deepView) {
+                  if (locked) {
+                    onAccessLog?.({
+                      action: "DENIED_ACCESS",
+                      target: `${record.level} / ${record.title}`,
+                      result: "DENIED",
+                      detail: `CLEARANCE ${requiredClearance} REQUIRED`
+                    });
+                    onSelectRecord({
+                      ...record,
+                      status: `SEALED / CLEARANCE ${requiredClearance} REQUIRED`,
+                      detail: `NORMA 拒绝访问。该行动复盘需要 CLEARANCE ${requiredClearance}，当前专员权限不足。`
+                    });
+                    return;
+                  }
+                  onAccessLog?.({
+                    action: "ARCHIVE_ACCESS",
+                    target: `${record.level} / ${record.title}`,
+                    result: "ALLOWED",
+                    detail: `CLEARANCE ${profile?.clearance ?? 1} VERIFIED`
+                  });
+                  onOpenDeepArchive(record.deepView, record);
+                  return;
+                }
+                onSelectRecord(record);
+              }}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <header>
+                <strong>{record.level}</strong>
+                <em>{locked ? `SEALED / C-${requiredClearance}` : record.status}</em>
+              </header>
+              <h2>{record.title}</h2>
+            </button>
+          );
+        })}
       </div>
       <div className="mission-ops-footer">
         {(blueprint?.workflow ?? module.lines).map((item) => (
@@ -3864,18 +3999,359 @@ function MissionDeepArchive({ dossier, onClose }: { dossier: MissionDeepDossier;
   );
 }
 
+function SurveillanceGlobePanel({
+  module,
+  profile,
+  onSelectRecord,
+  onAccessLog
+}: {
+  module: HoloModule;
+  profile?: AgentProfile | null;
+  onSelectRecord: (record: ArchiveRecord) => void;
+  onAccessLog?: (log: Omit<AccessLog, "id" | "at">) => void;
+}) {
+  const clearance = profile?.clearance ?? 1;
+  const activeCount = surveillanceAnomalies.filter((item) => item.status !== "RESOLVED").length;
+
+  const openAnomaly = (item: SurveillanceAnomaly) => {
+    const locked = clearance < item.clearance;
+
+    if (locked) {
+      onAccessLog?.({
+        action: "DENIED_ACCESS",
+        target: `SURVEILLANCE / ${item.code}`,
+        result: "DENIED",
+        detail: `CLEARANCE ${item.clearance} REQUIRED`
+      });
+      onSelectRecord({
+        title: `${item.code} / ${item.title}`,
+        level: item.level,
+        status: `SEALED / CLEARANCE ${item.clearance} REQUIRED`,
+        detail: `NORMA 拒绝访问完整异常记录。${item.title} 需要 CLEARANCE ${item.clearance}，当前专员仅可读取预警索引。`
+      });
+      return;
+    }
+
+    onAccessLog?.({
+      action: "EVIDENCE_QUERY",
+      target: `SURVEILLANCE / ${item.code}`,
+      result: "ALLOWED",
+      detail: `CLEARANCE ${clearance} VERIFIED`
+    });
+    onSelectRecord({
+      title: `${item.code} / ${item.title}`,
+      level: item.level,
+      status: item.status,
+      detail: `${item.location} / ${item.coordinate}。${item.summary} NORMA 判断：${item.norma} 建议：${item.recommendation}`
+    });
+  };
+
+  return (
+    <section
+      className="surveillance-globe-panel"
+      style={{ "--holo-color": module.color } as CSSProperties}
+      aria-label="全球预警与异常投影"
+    >
+      <header className="surveillance-globe-header">
+        <span>SURVEILLANCE GRID / GLOBAL ANOMALY PROJECTION</span>
+        <strong>ACTIVE {activeCount} / CLEARANCE {clearance}</strong>
+      </header>
+      <div className="surveillance-globe-layout">
+        <div className="surveillance-earth-wrap" aria-label="可拖动旋转的地球投影">
+          <div
+            className="surveillance-earth-canvas"
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerMove={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
+            onWheel={(event) => event.stopPropagation()}
+          >
+            <GlobeStreamEarth
+              anomalies={surveillanceAnomalies}
+              clearance={clearance}
+              onOpenAnomaly={openAnomaly}
+            />
+          </div>
+          <div className="surveillance-scanline" aria-hidden="true" />
+          <div className="surveillance-link-status">
+            <span>NORMA-SAT-07</span>
+            <strong>LINK STABLE / RANGE 1200KM</strong>
+          </div>
+        </div>
+        <div className="surveillance-anomaly-list">
+          <span>WARNING / ANOMALY MERGED QUEUE</span>
+          <h2>预警与异常记录</h2>
+          {surveillanceAnomalies.map((item) => {
+            const locked = clearance < item.clearance;
+            return (
+              <button
+                key={item.code}
+                type="button"
+                className={`surveillance-anomaly-card${locked ? " is-locked" : ""}`}
+                onClick={() => openAnomaly(item)}
+              >
+                <header>
+                  <span>{item.code}</span>
+                  <strong>{locked ? `C-${item.clearance} REQUIRED` : item.status}</strong>
+                </header>
+                <h3>{item.title}</h3>
+                <p>{locked ? "权限不足，仅显示预警索引。" : item.signal}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function GlobeStreamEarth({
+  anomalies,
+  clearance,
+  onOpenAnomaly
+}: {
+  anomalies: SurveillanceAnomaly[];
+  clearance: number;
+  onOpenAnomaly: (item: SurveillanceAnomaly) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const onOpenRef = useRef(onOpenAnomaly);
+
+  useEffect(() => {
+    onOpenRef.current = onOpenAnomaly;
+  }, [onOpenAnomaly]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let chart: any = null;
+    let cancelled = false;
+
+    async function mountGlobe() {
+      const earthFlyLine = (await import("earth-flyline")).default;
+      if (cancelled || !containerRef.current) return;
+
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      if (cancelled || !containerRef.current) return;
+
+      earthFlyLine.registerMap("norma-world", normaWorldFeatureCollection as any);
+      const globe = earthFlyLine.init({
+        dom: containerRef.current,
+        map: "norma-world",
+        mode: "3d",
+        cameraType: "OrthographicCamera",
+        controls: "custom",
+        autoRotate: true,
+        rotateSpeed: 0.0012,
+          config: {
+            R: 160,
+            enableZoom: false,
+            zoom: 0.92,
+            flyLineRFactor: 0.2,
+            bgStyle: {
+              color: "#040D21",
+              opacity: 1
+            },
+            earth: {
+              color: "#13162c",
+              material: "MeshPhongMaterial",
+            dragConfig: {
+              rotationSpeed: 1,
+              inertiaFactor: 0.92,
+              panSpeed: 0,
+              disableX: false,
+              disableY: true
+            }
+            },
+            mapStyle: {
+              areaColor: "#2e3564",
+              lineColor: "#797eff",
+              opacity: 1,
+              material: "MeshBasicMaterial"
+            },
+            hoverRegionStyle: {
+              show: true,
+              areaColor: "#cd79ff",
+            opacity: 1,
+            material: "MeshBasicMaterial"
+          },
+            scatterStyle: {
+              color: "#cd79ff",
+              show: true,
+              size: 5
+            },
+            spriteStyle: {
+              color: "#797eff",
+              show: true
+            },
+            pathStyle: {
+              color: "#cd79ff",
+              show: true,
+              size: 1
+            },
+            flyLineStyle: {
+              color: "#cd79ff",
+              size: 3
+            }
+          }
+      } as any);
+      chart = globe;
+
+      if ((globe.camera as any)?.isOrthographicCamera) {
+        globe.camera.position.set(0, 0, 500);
+        globe.camera.lookAt(0, 0, 0);
+        (globe.camera as any).updateProjectionMatrix?.();
+      }
+      if (globe.mainContainer) {
+        globe.mainContainer.rotation.x = 0;
+        globe.mainContainer.rotation.z = 0;
+      }
+      const originalUpdate = globe.controls?.update?.bind(globe.controls);
+      if (originalUpdate && globe.mainContainer) {
+        globe.controls.update = () => {
+          originalUpdate();
+          globe.mainContainer.rotation.x = 0;
+          globe.mainContainer.rotation.z = 0;
+        };
+      }
+
+      globe.mainContainer?.traverse?.((object: any) => {
+        const isCountryLine = object?.type === "LineLoop" || object?.isLine;
+        if (isCountryLine && object.material) {
+          object.material.color?.set?.("#797eff");
+          object.material.opacity = 1;
+          object.material.transparent = true;
+          object.material.depthTest = true;
+          object.material.depthWrite = false;
+          object.material.needsUpdate = true;
+          object.renderOrder = 40;
+        }
+        if (object?.userData?.type === "country" && object.material) {
+          object.material.color?.set?.("#2e3564");
+          object.material.opacity = 1;
+          object.material.needsUpdate = true;
+        }
+      });
+
+      const glowLines: any[] = [];
+      globe.mainContainer?.traverse?.((object: any) => {
+        const isCountryLine = object?.type === "LineLoop" || object?.isLine;
+        if (!isCountryLine || !object.material || !object.parent) return;
+
+        const brightLine = object.clone();
+        brightLine.material = object.material.clone();
+        brightLine.material.color?.set?.("#797eff");
+        brightLine.material.opacity = 0.82;
+        brightLine.material.transparent = true;
+        brightLine.material.depthTest = true;
+        brightLine.material.depthWrite = false;
+        brightLine.renderOrder = 50;
+
+        const glowLine = object.clone();
+        glowLine.material = object.material.clone();
+        glowLine.material.color?.set?.("#797eff");
+        glowLine.material.opacity = 0.42;
+        glowLine.material.transparent = true;
+        glowLine.material.depthTest = true;
+        glowLine.material.depthWrite = false;
+        glowLine.scale.multiplyScalar(1.003);
+        glowLine.renderOrder = 45;
+
+        glowLines.push({ parent: object.parent, lines: [glowLine, brightLine] });
+      });
+      glowLines.forEach(({ parent, lines }) => parent.add(...lines));
+
+      await globe.setData?.(
+        "point",
+        anomalies.map((item) => {
+          const locked = clearance < item.clearance;
+          return {
+            id: item.code,
+            code: item.code,
+            lon: item.lon,
+            lat: item.lat,
+            style: {
+              color: locked ? "#776f68" : item.tone,
+              size: locked ? 3 : 4,
+              show: true
+            }
+          };
+        })
+      );
+
+      await globe.setData?.(
+        "flyLine",
+        [
+          {
+            from: { id: "NORMANDY-LINK", lon: 2.3522, lat: 48.8566 },
+            to: { id: "BJ-METRO-07", lon: 116.4074, lat: 39.9042 },
+            style: {
+              pathStyle: { color: "#cd79ff", size: 1, show: true },
+              flyLineStyle: { color: "#cd79ff", size: 3 }
+            }
+          },
+          {
+            from: { id: "NORMANDY-LINK", lon: 2.3522, lat: 48.8566 },
+            to: { id: "GR-ICE-04", lon: -38, lat: 72 },
+            style: {
+              pathStyle: { color: "#cd79ff", size: 1, show: true },
+              flyLineStyle: { color: "#cd79ff", size: 3 }
+            }
+          },
+          {
+            from: { id: "NORMANDY-LINK", lon: 2.3522, lat: 48.8566 },
+            to: { id: "JP-REDWELL-11", lon: 139.6503, lat: 35.6762 },
+            style: {
+              pathStyle: { color: "#cd79ff", size: 1, show: true },
+              flyLineStyle: { color: "#cd79ff", size: 3 }
+            }
+          }
+        ]
+      );
+
+      globe.on?.("click", (_event: Event, mesh?: { userData?: Record<string, unknown> }) => {
+        const code = mesh?.userData?.code ?? mesh?.userData?.id;
+        if (typeof code !== "string") return;
+        const anomaly = anomalies.find((item) => item.code === code);
+        if (anomaly) onOpenRef.current(anomaly);
+      });
+    }
+
+    mountGlobe();
+
+    return () => {
+      cancelled = true;
+      chart?.destroy?.();
+      if (container) container.innerHTML = "";
+    };
+  }, [anomalies, clearance]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="surveillance-globestream-stage"
+      onPointerDown={(event) => event.stopPropagation()}
+      onPointerMove={(event) => event.stopPropagation()}
+      onPointerUp={(event) => event.stopPropagation()}
+      onWheel={(event) => event.stopPropagation()}
+    />
+  );
+}
+
 function ArchivePanel({
   module,
   selectedRecord,
   onSelectRecord,
   onOpenDeepArchive,
-  profile
+  profile,
+  onAccessLog
 }: {
   module: HoloModule;
   selectedRecord: ArchiveRecord | null;
   onSelectRecord: (record: ArchiveRecord) => void;
   onOpenDeepArchive: (id: DeepArchiveId, record?: ArchiveRecord) => void;
   profile?: AgentProfile | null;
+  onAccessLog?: (log: Omit<AccessLog, "id" | "at">) => void;
 }) {
   const loreModule = getLoreModule(module.loreId);
   const blueprint = archiveBlueprints[module.id];
@@ -3884,12 +4360,32 @@ function ArchivePanel({
   const capabilities = blueprint?.workflow ?? loreModule?.capabilities.slice(0, 3) ?? module.lines;
 
   if (module.id === "missions") {
-    return <MissionOperationsPanel module={module} onSelectRecord={onSelectRecord} onOpenDeepArchive={onOpenDeepArchive} />;
+    return (
+      <MissionOperationsPanel
+        module={module}
+        onSelectRecord={onSelectRecord}
+        onOpenDeepArchive={onOpenDeepArchive}
+        profile={profile}
+        onAccessLog={onAccessLog}
+      />
+    );
+  }
+
+  if (module.id === "surveillance") {
+    return (
+      <SurveillanceGlobePanel
+        module={module}
+        profile={profile}
+        onSelectRecord={onSelectRecord}
+        onAccessLog={onAccessLog}
+      />
+    );
   }
 
   if (module.id === "identity" && profile) {
     const missionScores = Object.values(profile.missionScores);
     const reviewedArchives = profile.reviewedArchives ?? [];
+    const accessLogs = profile.accessLogs ?? [];
 
     return (
       <section
@@ -3932,6 +4428,16 @@ function ArchivePanel({
             <span>NORMA NOTE</span>
             <em>该专员已完成基础王座级风险复盘。当前无强制派遣指令。</em>
           </article>
+          <article>
+            <span>ACCESS LOG</span>
+            {accessLogs.length ? (
+              accessLogs.slice(0, 5).map((log) => (
+                <em key={log.id}>{log.action} / {log.target} / {log.result}</em>
+              ))
+            ) : (
+              <em>暂无档案访问审计记录</em>
+            )}
+          </article>
         </div>
       </section>
     );
@@ -3968,8 +4474,10 @@ function ArchivePanel({
         <div className="archive-record-grid">
           {blueprint.records.map((record) => {
             const requiredArchiveId = getRequiredArchiveId(module.id, record);
+            const requiredClearance = getRequiredClearance(module.id, record);
+            const hasClearance = (profile?.clearance ?? 1) >= requiredClearance;
             const unlocked = !requiredArchiveId || Boolean(profile?.unlockedArchives.includes(requiredArchiveId));
-            const locked = Boolean(record.deepView && !unlocked);
+            const locked = Boolean(record.deepView && (!unlocked || !hasClearance));
 
             return (
               <button
@@ -3978,17 +4486,29 @@ function ArchivePanel({
                 className={`archive-record-card${record.deepView && unlocked ? " has-deep-view" : ""}${locked ? " is-locked" : ""}`}
                 onClick={() => {
                   if (locked) {
+                    onAccessLog?.({
+                      action: "DENIED_ACCESS",
+                      target: `${record.level} / ${record.title}`,
+                      result: "DENIED",
+                      detail: `CLEARANCE ${requiredClearance} REQUIRED`
+                    });
                     onSelectRecord({
                       ...record,
-                      status: requiredArchiveId === "archive-bronze-fire" ? "SEALED / CLEARANCE 2 REQUIRED" : "SEALED / HIGHER CLEARANCE",
+                      status: `SEALED / CLEARANCE ${requiredClearance} REQUIRED`,
                       detail:
-                        requiredArchiveId === "archive-bronze-fire"
+                        requiredArchiveId === "archive-bronze-fire" && !unlocked
                           ? "NORMA 拒绝访问。完成 MISSION-S / 夔门计划复盘后，KING-01 初级档案将开放。"
-                          : "NORMA 拒绝访问。该王座档案仍处于高级封存状态，当前专员权限不足。"
+                          : `NORMA 拒绝访问。该档案需要 CLEARANCE ${requiredClearance}，当前专员权限不足。`
                     });
                     return;
                   }
                   if (record.deepView) {
+                    onAccessLog?.({
+                      action: "ARCHIVE_ACCESS",
+                      target: `${record.level} / ${record.title}`,
+                      result: "ALLOWED",
+                      detail: `CLEARANCE ${profile?.clearance ?? 1} VERIFIED`
+                    });
                     onOpenDeepArchive(record.deepView, record);
                     return;
                   }
@@ -4163,7 +4683,8 @@ export default function HoloTerminal3D({
   operationCompleted = false,
   onStartOperation,
   onOpenDossier,
-  onArchiveReviewed
+  onArchiveReviewed,
+  onAccessLog
 }: {
   agentName?: string;
   profile?: AgentProfile | null;
@@ -4171,6 +4692,7 @@ export default function HoloTerminal3D({
   onStartOperation?: () => void;
   onOpenDossier?: () => void;
   onArchiveReviewed?: (archiveId: string) => void;
+  onAccessLog?: (log: Omit<AccessLog, "id" | "at">) => void;
 }) {
   const [activePreset, setActivePreset] = useState<HoloModuleId>("overview");
   const [selectedRecord, setSelectedRecord] = useState<ArchiveRecord | null>(null);
@@ -4327,6 +4849,7 @@ export default function HoloTerminal3D({
               onSelectRecord={setSelectedRecord}
               onOpenDeepArchive={openDeepArchive}
               profile={profile}
+              onAccessLog={onAccessLog}
             />
           )}
           {activeModule.id !== "overview" && selectedRecord ? <ArchiveDetailDrawer module={activeModule} record={selectedRecord} /> : null}

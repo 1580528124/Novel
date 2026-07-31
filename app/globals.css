@@ -7645,6 +7645,22 @@ button:disabled:hover {
   color: rgba(220, 82, 70, 0.78) !important;
 }
 
+.mission-card.is-locked {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.34);
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 8px),
+    #050807 !important;
+}
+
+.mission-card.is-locked header em {
+  color: rgba(220, 82, 70, 0.78) !important;
+}
+
+.mission-card.is-locked h2 {
+  color: rgba(255, 255, 255, 0.42) !important;
+}
+
 .pure-holo-terminal:not(.is-overview) .domain-stage,
 .pure-holo-terminal:not(.is-overview) .domain-stage *,
 .archive-record-grid,
@@ -8465,5 +8481,276 @@ button:disabled:hover {
     bottom: 84px;
     width: min(300px, calc(100vw - 28px));
   }
+}
+
+.surveillance-globe-panel {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  z-index: 14;
+  width: min(1180px, calc(100vw - 52px));
+  max-height: min(78vh, 720px);
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--holo-color, #48d6c2) 38%, rgba(255, 255, 255, 0.08));
+  background: #020807;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    inset 0 0 46px color-mix(in srgb, var(--holo-color, #48d6c2) 8%, transparent),
+    0 28px 82px rgba(0, 0, 0, 0.58);
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+}
+
+.surveillance-globe-panel::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    linear-gradient(90deg, transparent 0 48%, color-mix(in srgb, var(--holo-color, #48d6c2) 9%, transparent) 50%, transparent 52%),
+    repeating-linear-gradient(180deg, transparent 0 18px, color-mix(in srgb, var(--holo-color, #48d6c2) 4%, transparent) 19px 20px);
+  opacity: 0.34;
+  pointer-events: none;
+}
+
+.surveillance-globe-header,
+.surveillance-globe-layout {
+  position: relative;
+  z-index: 1;
+}
+
+.surveillance-globe-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  color: color-mix(in srgb, var(--holo-color, #48d6c2) 72%, rgba(255, 255, 255, 0.5));
+  font-family: var(--font-terminal);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+}
+
+.surveillance-globe-header strong {
+  color: rgba(231, 221, 170, 0.82);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.surveillance-globe-layout {
+  display: grid;
+  grid-template-columns: minmax(500px, 1.18fr) minmax(340px, 0.82fr);
+  gap: 22px;
+  align-items: stretch;
+}
+
+.surveillance-earth-wrap {
+  position: relative;
+  justify-self: center;
+  width: min(560px, 100%);
+  aspect-ratio: 1;
+  min-height: 0;
+  border: 1px solid rgba(116, 125, 255, 0.22);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(121, 126, 255, 0.16), transparent 58%),
+    #040d21;
+  overflow: hidden;
+}
+
+.surveillance-earth-canvas {
+  position: absolute;
+  inset: 0;
+  background: #040d21;
+  cursor: grab;
+  touch-action: none;
+}
+
+.surveillance-earth-canvas:active {
+  cursor: grabbing;
+}
+
+.surveillance-earth-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.surveillance-globestream-stage {
+  position: absolute;
+  inset: 0;
+  background: #040d21;
+}
+
+.surveillance-globestream-stage::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 62%, rgba(0, 0, 0, 0.04) 88%),
+    linear-gradient(180deg, rgba(121, 126, 255, 0.025), transparent 24%, transparent 80%, rgba(205, 121, 255, 0.025));
+  pointer-events: none;
+}
+
+.surveillance-globestream-stage canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  filter:
+    brightness(1.08)
+    saturate(1.08)
+    drop-shadow(0 0 4px rgba(121, 126, 255, 0.28));
+}
+
+.surveillance-scanline {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(137, 226, 211, 0.68), transparent);
+  box-shadow: 0 0 18px rgba(72, 214, 194, 0.34);
+  animation: surveillance-scan 3.8s ease-in-out infinite;
+}
+
+.surveillance-link-status {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(231, 221, 170, 0.78);
+  font-family: var(--font-terminal);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.surveillance-anomaly-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  max-height: 430px;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.surveillance-anomaly-list > span {
+  color: color-mix(in srgb, var(--holo-color, #48d6c2) 68%, rgba(255, 255, 255, 0.42));
+  font-family: var(--font-terminal);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+}
+
+.surveillance-anomaly-list h2 {
+  margin: 0 0 8px;
+  color: rgba(255, 255, 255, 0.86);
+  font-family: var(--font-engraved);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+.surveillance-anomaly-card {
+  position: relative;
+  min-height: 94px;
+  padding: 13px 15px;
+  border: 1px solid rgba(72, 214, 194, 0.2);
+  background:
+    linear-gradient(135deg, rgba(72, 214, 194, 0.08), transparent 58%),
+    #050908;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.surveillance-anomaly-card:hover {
+  border-color: rgba(124, 231, 211, 0.46);
+  background:
+    linear-gradient(135deg, rgba(72, 214, 194, 0.14), transparent 58%),
+    #07100e;
+  transform: translateY(-1px);
+}
+
+.surveillance-anomaly-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(216, 189, 102, 0.76);
+  font-family: var(--font-terminal);
+  font-size: 10px;
+  letter-spacing: 0.13em;
+}
+
+.surveillance-anomaly-card h3 {
+  margin: 14px 0 4px;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: var(--font-engraved);
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.surveillance-anomaly-card p {
+  margin: 0;
+  color: rgba(229, 228, 204, 0.56);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.surveillance-anomaly-card.is-locked {
+  border-color: rgba(158, 83, 70, 0.28);
+  background:
+    repeating-linear-gradient(135deg, rgba(158, 83, 70, 0.08) 0 8px, transparent 9px 18px),
+    #040605;
+  opacity: 0.72;
+}
+
+@keyframes surveillance-grid-drift {
+  from {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  to {
+    background-position: 0 0, 72px 0, 0 72px;
+  }
+}
+
+@keyframes surveillance-scan {
+  0%,
+  100% {
+    transform: translateY(-150px);
+    opacity: 0.12;
+  }
+  50% {
+    transform: translateY(150px);
+    opacity: 0.74;
+  }
+}
+
+@media (max-width: 860px) {
+  .surveillance-globe-panel {
+    top: 50%;
+    width: calc(100vw - 28px);
+    max-height: calc(100vh - 120px);
+    overflow: auto;
+    padding: 16px;
+  }
+
+  .surveillance-globe-header,
+  .surveillance-link-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .surveillance-globe-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .surveillance-earth-wrap {
+    width: min(520px, 100%);
+  }
+
 }
 
