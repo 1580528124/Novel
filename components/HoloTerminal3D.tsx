@@ -2053,10 +2053,45 @@ function createGlowTexture(size = 128) {
   return new THREE.CanvasTexture(canvas);
 }
 
-const normaWorldFeatureCollection = feature(
+const baseWorldFeatureCollection = feature(
   worldAtlas as any,
   (worldAtlas as any).objects.countries
 ) as unknown as FeatureCollection;
+
+const normaChinaRegionNames = new Set(["China", "Taiwan", "Hong Kong", "Macau", "Macao"]);
+
+function toMultiPolygonCoordinates(geometry: any) {
+  if (!geometry) return [];
+  if (geometry.type === "Polygon") return [geometry.coordinates];
+  if (geometry.type === "MultiPolygon") return geometry.coordinates;
+  return [];
+}
+
+function mergeChinaRegionFeatures(collection: FeatureCollection): FeatureCollection {
+  const features = collection.features as any[];
+  const china = features.find((item) => item.properties?.name === "China");
+  if (!china) return collection;
+
+  const mergedChinaCoordinates = features
+    .filter((item) => normaChinaRegionNames.has(item.properties?.name))
+    .flatMap((item) => toMultiPolygonCoordinates(item.geometry));
+
+  return {
+    ...collection,
+    features: [
+      ...features.filter((item) => !normaChinaRegionNames.has(item.properties?.name)),
+      {
+        ...china,
+        geometry: {
+          type: "MultiPolygon",
+          coordinates: mergedChinaCoordinates
+        }
+      }
+    ]
+  } as FeatureCollection;
+}
+
+const normaWorldFeatureCollection = mergeChinaRegionFeatures(baseWorldFeatureCollection);
 
 const globeStreamDemoFlyLines = [
   { from: { id: "1", lon: -23.0075, lat: 50.4296 }, to: { id: "2", lon: 26.1223, lat: -7.8756 } },
@@ -4285,10 +4320,12 @@ function GlobeStreamEarth({
       await globe.addData?.("road", globeStreamDemoRoads);
       await globe.addData?.("flyLine", globeStreamDemoFlyLines);
 
-      const china = (normaWorldFeatureCollection.features as any[]).find((item) => item.properties?.name === "China");
-      const chinaCoordinates = china?.geometry?.coordinates ?? [];
-      for (const coordinates of chinaCoordinates) {
-        await globe.addData?.("mapStreamLine", { data: coordinates, style: { opacity: 1 } });
+      const chinaRegions = (normaWorldFeatureCollection.features as any[]).filter((item) => item.properties?.name === "China");
+      for (const region of chinaRegions) {
+        const regionCoordinates = region?.geometry?.coordinates ?? [];
+        for (const coordinates of regionCoordinates) {
+          await globe.addData?.("mapStreamLine", { data: coordinates, style: { opacity: 1 } });
+        }
       }
 
       await globe.addData?.(
