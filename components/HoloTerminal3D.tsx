@@ -4143,6 +4143,9 @@ function GlobeStreamEarth({
   const containerRef = useRef<HTMLDivElement>(null);
   const onOpenRef = useRef(onOpenAnomaly);
   const draggingRef = useRef(false);
+  const globeControlsRef = useRef<any>(null);
+  const globeChartRef = useRef<any>(null);
+  const lastDragXRef = useRef(0);
 
   useEffect(() => {
     onOpenRef.current = onOpenAnomaly;
@@ -4155,6 +4158,7 @@ function GlobeStreamEarth({
     let chart: any = null;
     let cancelled = false;
     let rotationFrame: number | null = null;
+    const cleanupHandlers: Array<() => void> = [];
 
     async function mountGlobe() {
       const earthFlyLine = (await import("earth-flyline")).default;
@@ -4186,6 +4190,7 @@ function GlobeStreamEarth({
             dragConfig: {
               rotationSpeed: 1,
               inertiaFactor: 0.95,
+              disableX: true,
               disableY: true
             }
           },
@@ -4221,24 +4226,53 @@ function GlobeStreamEarth({
         }
       } as any);
       chart = globe;
+      globeChartRef.current = globe;
 
       if (globe.mainContainer) {
         globe.mainContainer.rotation.x = 0;
         globe.mainContainer.rotation.z = 0;
       }
+      if (globe.controls?.options) {
+        globe.controls.options.inertiaFactor = 0;
+        globe.controls.options.disableX = true;
+        globe.controls.options.disableY = true;
+      }
       const originalUpdate = globe.controls?.update?.bind(globe.controls);
       if (originalUpdate && globe.mainContainer) {
+        globeControlsRef.current = globe.controls;
         globe.controls.update = () => {
-          originalUpdate();
+          if (globe.controls.rotationVelocity) {
+            globe.controls.rotationVelocity.x = 0;
+            globe.controls.rotationVelocity.y = 0;
+          }
+          globe.controls.isDragging = false;
           globe.mainContainer.rotation.x = 0;
           globe.mainContainer.rotation.z = 0;
         };
       }
 
+      const clearDragState = () => {
+        draggingRef.current = false;
+        if (globe.controls) {
+          globe.controls.isDragging = false;
+        }
+        if (globe.controls?.rotationVelocity) {
+          globe.controls.rotationVelocity.x = 0;
+          globe.controls.rotationVelocity.y = 0;
+        }
+      };
+      const canvas = globe.renderer?.domElement as HTMLCanvasElement | undefined;
+      window.addEventListener("mouseup", clearDragState);
+      window.addEventListener("blur", clearDragState);
+      cleanupHandlers.push(() => {
+        window.removeEventListener("mouseup", clearDragState);
+        window.removeEventListener("blur", clearDragState);
+      });
+
       const rotateGlobe = () => {
         if (cancelled) return;
-        if (globe.mainContainer && !draggingRef.current) {
-          globe.mainContainer.rotation.y -= 0.0014;
+        if (globe.mainContainer && !draggingRef.current && !globe.controls?.isDragging) {
+          globe.mainContainer.rotation.y += 0.0042;
           globe.mainContainer.rotation.x = 0;
           globe.mainContainer.rotation.z = 0;
         }
@@ -4283,6 +4317,9 @@ function GlobeStreamEarth({
     return () => {
       cancelled = true;
       if (rotationFrame !== null) cancelAnimationFrame(rotationFrame);
+      cleanupHandlers.forEach((cleanup) => cleanup());
+      globeControlsRef.current = null;
+      globeChartRef.current = null;
       chart?.destroy?.();
       if (container) container.innerHTML = "";
     };
@@ -4294,21 +4331,78 @@ function GlobeStreamEarth({
       className="surveillance-globestream-stage"
       onPointerDown={(event) => {
         draggingRef.current = true;
+        lastDragXRef.current = event.clientX;
         event.currentTarget.setPointerCapture?.(event.pointerId);
+        if (globeControlsRef.current) {
+          globeControlsRef.current.isDragging = false;
+        }
         event.stopPropagation();
       }}
-      onPointerMove={(event) => event.stopPropagation()}
+      onPointerMove={(event) => {
+        const globe = globeChartRef.current;
+        if (draggingRef.current && globe?.mainContainer) {
+          const deltaX = event.clientX - lastDragXRef.current;
+          lastDragXRef.current = event.clientX;
+          globe.mainContainer.rotation.y += deltaX * 0.0055;
+          globe.mainContainer.rotation.x = 0;
+          globe.mainContainer.rotation.z = 0;
+        }
+        event.stopPropagation();
+      }}
       onPointerUp={(event) => {
         draggingRef.current = false;
+        if (globeControlsRef.current) {
+          globeControlsRef.current.isDragging = false;
+        }
+        if (globeControlsRef.current?.rotationVelocity) {
+          globeControlsRef.current.rotationVelocity.x = 0;
+          globeControlsRef.current.rotationVelocity.y = 0;
+        }
         event.currentTarget.releasePointerCapture?.(event.pointerId);
         event.stopPropagation();
       }}
       onPointerCancel={(event) => {
         draggingRef.current = false;
+        if (globeControlsRef.current) {
+          globeControlsRef.current.isDragging = false;
+        }
+        if (globeControlsRef.current?.rotationVelocity) {
+          globeControlsRef.current.rotationVelocity.x = 0;
+          globeControlsRef.current.rotationVelocity.y = 0;
+        }
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
         event.stopPropagation();
       }}
       onPointerLeave={(event) => {
-        if (event.buttons === 0) draggingRef.current = false;
+        if (event.buttons === 0) {
+          draggingRef.current = false;
+          if (globeControlsRef.current) {
+            globeControlsRef.current.isDragging = false;
+          }
+          if (globeControlsRef.current?.rotationVelocity) {
+            globeControlsRef.current.rotationVelocity.x = 0;
+            globeControlsRef.current.rotationVelocity.y = 0;
+          }
+        }
+      }}
+      onMouseUp={(event) => {
+        draggingRef.current = false;
+        if (globeControlsRef.current) {
+          globeControlsRef.current.isDragging = false;
+        }
+        if (globeControlsRef.current?.rotationVelocity) {
+          globeControlsRef.current.rotationVelocity.x = 0;
+          globeControlsRef.current.rotationVelocity.y = 0;
+        }
+        event.stopPropagation();
+      }}
+      onMouseLeave={(event) => {
+        if (event.buttons === 0) {
+          draggingRef.current = false;
+          if (globeControlsRef.current) {
+            globeControlsRef.current.isDragging = false;
+          }
+        }
       }}
       onWheel={(event) => event.stopPropagation()}
     />
