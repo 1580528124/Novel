@@ -4464,6 +4464,10 @@ function SurveillanceGlobePanel({
             <span>LOCATION</span>
             <strong>{localizeForecastText(selectedAnomaly.location)}</strong>
           </div>
+          <div className="is-coordinate">
+            <span>COORDINATE</span>
+            <strong>{selectedAnomaly.coordinate}</strong>
+          </div>
           <div>
             <span>PREDICTED KING</span>
             <strong>{selectedAnomaly.predictedKing}</strong>
@@ -4520,6 +4524,7 @@ function SurveillanceGlobePanel({
             <GlobeStreamEarth
               anomalies={forecastSignals}
               clearance={clearance}
+              selectedCode={selectedAnomalyCode}
               onOpenAnomaly={openAnomaly}
             />
           </div>
@@ -4623,13 +4628,127 @@ function SurveillanceGlobePanel({
   );
 }
 
+function getFocusedGlobeRotationY(lon: number) {
+  return -Math.PI / 2 - THREE.MathUtils.degToRad(lon);
+}
+
+function getGlobeSurfacePosition(radius: number, lon: number, lat: number, offset = 1) {
+  const lonRad = -THREE.MathUtils.degToRad(lon);
+  const latRad = THREE.MathUtils.degToRad(lat);
+
+  return new THREE.Vector3(
+    radius * offset * Math.cos(latRad) * Math.cos(lonRad),
+    radius * offset * Math.sin(latRad),
+    radius * offset * Math.cos(latRad) * Math.sin(lonRad)
+  );
+}
+
+function createRadialGlowTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 192;
+  canvas.height = 192;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+
+  const gradient = context.createRadialGradient(96, 96, 1, 96, 96, 88);
+  gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
+  gradient.addColorStop(0.09, "rgba(255, 255, 255, 1)");
+  gradient.addColorStop(0.18, "rgba(245, 253, 255, 0.98)");
+  gradient.addColorStop(0.34, "rgba(180, 242, 255, 0.72)");
+  gradient.addColorStop(0.56, "rgba(110, 225, 255, 0.28)");
+  gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createSelectedAnomalyGlow(item: SurveillanceAnomaly) {
+  const group = new THREE.Group();
+  const position = getGlobeSurfacePosition(160, item.lon, item.lat, 1.045);
+  const texture = createRadialGlowTexture();
+  if (!texture) return group;
+
+  const halo = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: texture,
+      color: "#ffffff",
+      transparent: true,
+      opacity: 1,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+      toneMapped: false
+    })
+  );
+  halo.scale.set(30, 30, 1);
+
+  const outerHalo = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: texture.clone(),
+      color: "#ffffff",
+      transparent: true,
+      opacity: 0.62,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+      toneMapped: false
+    })
+  );
+  outerHalo.scale.set(44, 44, 1);
+
+  const core = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: texture.clone(),
+      color: "#ffffff",
+      transparent: true,
+      opacity: 1,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+      toneMapped: false
+    })
+  );
+  core.scale.set(10, 10, 1);
+
+  const pin = new THREE.Mesh(
+    new THREE.SphereGeometry(2.6, 20, 20),
+    new THREE.MeshBasicMaterial({
+      color: "#ffffff",
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
+      depthTest: true,
+      toneMapped: false
+    })
+  );
+
+  group.position.copy(position);
+  group.add(outerHalo, halo, core, pin);
+  group.userData = {
+    code: item.code,
+    selectedGlow: true,
+    outerHaloMaterial: outerHalo.material,
+    haloMaterial: halo.material,
+    coreMaterial: core.material,
+    pinMaterial: pin.material
+  };
+  return group;
+}
+
 function GlobeStreamEarth({
   anomalies,
   clearance,
+  selectedCode,
   onOpenAnomaly
 }: {
   anomalies: SurveillanceAnomaly[];
   clearance: number;
+  selectedCode: string;
   onOpenAnomaly: (item: SurveillanceAnomaly) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -4638,10 +4757,34 @@ function GlobeStreamEarth({
   const globeControlsRef = useRef<any>(null);
   const globeChartRef = useRef<any>(null);
   const lastDragXRef = useRef(0);
+  const targetRotationYRef = useRef<number | null>(null);
+  const focusHoldUntilRef = useRef(0);
+  const selectedGlowRef = useRef<THREE.Group | null>(null);
 
   useEffect(() => {
     onOpenRef.current = onOpenAnomaly;
   }, [onOpenAnomaly]);
+
+  useEffect(() => {
+    const globe = globeChartRef.current;
+    const selected = anomalies.find((item) => item.code === selectedCode);
+    if (!globe || !selected) {
+      targetRotationYRef.current = null;
+      if (selectedGlowRef.current) {
+        (selectedGlowRef.current.parent as any)?.remove(selectedGlowRef.current as any);
+        selectedGlowRef.current = null;
+      }
+      return;
+    }
+
+    targetRotationYRef.current = getFocusedGlobeRotationY(selected.lon);
+    focusHoldUntilRef.current = 0;
+    if (selectedGlowRef.current) {
+      (selectedGlowRef.current.parent as any)?.remove(selectedGlowRef.current as any);
+    }
+    selectedGlowRef.current = createSelectedAnomalyGlow(selected);
+    globe.mainContainer?.add(selectedGlowRef.current as any);
+  }, [anomalies, selectedCode]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -4763,8 +4906,35 @@ function GlobeStreamEarth({
 
       const rotateGlobe = () => {
         if (cancelled) return;
+        if (selectedGlowRef.current) {
+          const pulse = (Math.sin(performance.now() * 0.0048) + 1) / 2;
+          const glow = selectedGlowRef.current;
+          const outerHaloMaterial = glow.userData.outerHaloMaterial as THREE.SpriteMaterial | undefined;
+          const haloMaterial = glow.userData.haloMaterial as THREE.SpriteMaterial | undefined;
+          const coreMaterial = glow.userData.coreMaterial as THREE.SpriteMaterial | undefined;
+          const pinMaterial = glow.userData.pinMaterial as THREE.MeshBasicMaterial | undefined;
+          glow.scale.setScalar(0.92 + pulse * 0.12);
+          if (outerHaloMaterial) outerHaloMaterial.opacity = 0.42 + pulse * 0.34;
+          if (haloMaterial) haloMaterial.opacity = 0.72 + pulse * 0.28;
+          if (coreMaterial) coreMaterial.opacity = 0.9 + pulse * 0.1;
+          pinMaterial?.color.setScalar(1);
+        }
         if (globe.mainContainer && !draggingRef.current && !globe.controls?.isDragging) {
-          globe.mainContainer.rotation.y += 0.0042;
+          const targetRotationY = targetRotationYRef.current;
+          if (targetRotationY !== null) {
+            const delta = Math.atan2(
+              Math.sin(targetRotationY - globe.mainContainer.rotation.y),
+              Math.cos(targetRotationY - globe.mainContainer.rotation.y)
+            );
+            globe.mainContainer.rotation.y += delta * 0.08;
+            if (Math.abs(delta) < 0.006) {
+              globe.mainContainer.rotation.y = targetRotationY;
+              targetRotationYRef.current = null;
+              focusHoldUntilRef.current = performance.now() + 3500;
+            }
+          } else if (performance.now() >= focusHoldUntilRef.current) {
+            globe.mainContainer.rotation.y += 0.0042;
+          }
           globe.mainContainer.rotation.x = 0;
           globe.mainContainer.rotation.z = 0;
         }
@@ -4798,6 +4968,14 @@ function GlobeStreamEarth({
         }))
       );
 
+      const selectedAtMount = anomalies.find((item) => item.code === selectedCode);
+      if (selectedAtMount) {
+        targetRotationYRef.current = getFocusedGlobeRotationY(selectedAtMount.lon);
+        focusHoldUntilRef.current = 0;
+        selectedGlowRef.current = createSelectedAnomalyGlow(selectedAtMount);
+        globe.mainContainer?.add(selectedGlowRef.current as any);
+      }
+
       globe.on?.("click", (_event: Event, mesh?: { userData?: Record<string, unknown> }) => {
         const code = mesh?.userData?.code ?? mesh?.userData?.id;
         if (typeof code !== "string") return;
@@ -4814,6 +4992,7 @@ function GlobeStreamEarth({
       cleanupHandlers.forEach((cleanup) => cleanup());
       globeControlsRef.current = null;
       globeChartRef.current = null;
+      selectedGlowRef.current = null;
       chart?.destroy?.();
       if (container) container.innerHTML = "";
     };
@@ -4837,6 +5016,8 @@ function GlobeStreamEarth({
         if (draggingRef.current && globe?.mainContainer) {
           const deltaX = event.clientX - lastDragXRef.current;
           lastDragXRef.current = event.clientX;
+          targetRotationYRef.current = null;
+          focusHoldUntilRef.current = 0;
           globe.mainContainer.rotation.y += deltaX * 0.0055;
           globe.mainContainer.rotation.x = 0;
           globe.mainContainer.rotation.z = 0;
