@@ -11,6 +11,7 @@ import type { FeatureCollection } from "geojson";
 import normaLoreData from "@/data/norma-lore.json";
 import worldAtlas from "world-atlas/countries-50m.json";
 import type { AccessLog, AgentProfile } from "@/lib/agentProfile";
+import { fallbackNormaForecastSignals, type NormaForecastResponse } from "@/lib/normaForecast";
 
 type HoloModuleId =
   | "overview"
@@ -226,6 +227,11 @@ type SurveillanceAnomaly = {
   location: string;
   coordinate: string;
   signal: string;
+  disasterType?: string;
+  observedAt?: string;
+  predictedKing?: string;
+  probability?: number;
+  indicators?: string[];
   clearance: AgentProfile["clearance"];
   lat: number;
   lon: number;
@@ -234,6 +240,14 @@ type SurveillanceAnomaly = {
   norma: string;
   recommendation: string;
 };
+
+type AnomalyReviewState =
+  | "EXECUTIVE REVIEW"
+  | "ARCHIVE LINKED"
+  | "WATCH"
+  | "ELEVATE FORECAST"
+  | "LINK ARCHIVE"
+  | "KEEP WATCH";
 
 const surveillanceAnomalies: SurveillanceAnomaly[] = [
   {
@@ -301,6 +315,165 @@ const surveillanceAnomalies: SurveillanceAnomaly[] = [
     recommendation: "申请执行部授权后再查看完整记录。"
   }
 ];
+
+const disasterForecastSignals: SurveillanceAnomaly[] = [
+  {
+    code: "PACIFIC-RING-26",
+    title: "环太平洋地震链频率异常",
+    level: "GEO-A",
+    status: "FORECASTING",
+    location: "环太平洋火山地震带",
+    coordinate: "36.2048N / 138.2529E",
+    signal: "浅源地震密度升高 / 地壳应力偏移",
+    disasterType: "地震 / 地壳活动",
+    observedAt: "2026-08-01 06:40 CST",
+    predictedKing: "大地与山之王",
+    probability: 68,
+    indicators: ["浅源震群扩散", "地下空洞回声增强", "山脉带重力异常"],
+    clearance: 2,
+    lat: 36.2048,
+    lon: 138.2529,
+    tone: "#d8bd66",
+    summary: "NORMA 将过去 72 小时内的浅源地震、地壳应力、地下空洞回声进行合并计算，结果显示异常更接近大地与山之王的复苏前兆，而非普通板块释放。",
+    norma: "当前缺少实体活动证据，但地质信号之间的相关性已超过学院预警阈值。该记录被标记为龙王复苏概率预测，而不是已发生事件。",
+    recommendation: "保持全球地震链监听，申请调取炼金地震仪与执行部地下节点数据。"
+  },
+  {
+    code: "ICELAND-VOLCANO-04",
+    title: "冰岛火山热源持续增强",
+    level: "THERMAL-A",
+    status: "WATCH",
+    location: "冰岛 / 大西洋火山带",
+    coordinate: "64.9631N / 19.0208W",
+    signal: "岩浆热源抬升 / 金属矿脉磁偏移",
+    disasterType: "火山 / 地热异常",
+    observedAt: "2026-08-01 04:15 CST",
+    predictedKing: "青铜与火之王",
+    probability: 57,
+    indicators: ["地下热源抬升", "金属矿脉磁偏移", "硫化物浓度异常"],
+    clearance: 2,
+    lat: 64.9631,
+    lon: -19.0208,
+    tone: "#6fb7ff",
+    summary: "火山热源与金属矿脉磁偏移同时出现，符合青铜与火之王相关征兆的低阶组合，但尚未出现龙文或炼金矩阵回声。",
+    norma: "推断概率处于观察区间。若热源继续抬升并伴随金属共振，预警等级将自动上调。",
+    recommendation: "关联青铜与火之王档案，持续监听工业区与矿脉异常。"
+  },
+  {
+    code: "N-ATLANTIC-09",
+    title: "北大西洋深层洋流异常",
+    level: "OCEAN-A",
+    status: "FORECASTING",
+    location: "北大西洋 / 深海温跃层",
+    coordinate: "52.0000N / 30.0000W",
+    signal: "深层洋流偏转 / 声呐低频脉冲",
+    disasterType: "海洋 / 洋流异常",
+    observedAt: "2026-08-01 03:20 CST",
+    predictedKing: "海洋与水之王",
+    probability: 62,
+    indicators: ["温跃层断裂", "声呐低频脉冲", "船舶罗盘漂移"],
+    clearance: 1,
+    lat: 52,
+    lon: -30,
+    tone: "#79d6bd",
+    summary: "多个海洋观测站在同一深度层记录到洋流偏转。NORMA 认为它可能只是自然海况，也可能是海洋与水之王相关的低频征兆。",
+    norma: "该信号对专员开放，可作为低权限预警样本。当前不建议执行部介入。",
+    recommendation: "维持卫星与声呐链路，等待第二组深海数据。"
+  },
+  {
+    code: "SAHARA-STORM-12",
+    title: "撒哈拉高空沙暴电荷异常",
+    level: "ATM-S",
+    status: "SEALED",
+    location: "撒哈拉 / 高空风暴带",
+    coordinate: "23.4162N / 25.6628E",
+    signal: "高空电荷聚集 / 风暴路径逆转",
+    disasterType: "风暴 / 电磁异常",
+    observedAt: "2026-08-01 01:55 CST",
+    predictedKing: "天空与风之王",
+    probability: 74,
+    indicators: ["高空电荷密度异常", "风暴路径逆转", "航空无线电噪声"],
+    clearance: 3,
+    lat: 23.4162,
+    lon: 25.6628,
+    tone: "#c95e4c",
+    summary: "该风暴带出现逆常规路径迁移，并伴随高空电荷聚集。完整推断涉及天空与风之王高权限档案。",
+    norma: "当前权限不足时仅显示灾害索引。若信号持续增强，执行部会收到自动授权请求。",
+    recommendation: "需要 CLEARANCE 3 后读取完整气象-龙王关联模型。"
+  }
+];
+
+function localizeForecastText(text: string): string {
+  const localizedWildfire = text.match(/^野火：([^,]+),\s*([^,]+),\s*(.+)$/);
+  if (localizedWildfire) {
+    return `野火：${localizeForecastText(localizedWildfire[3])}${localizeForecastText(localizedWildfire[2])}地区`;
+  }
+
+  return text
+    .replace(/^(\d+)\s+km\s+([NSEW]{1,2})\s+of\s+(.+)$/i, (_match, distance: string, direction: string, name: string) => {
+      const directionMap: Record<string, string> = {
+        N: "以北",
+        S: "以南",
+        E: "以东",
+        W: "以西",
+        NE: "东北",
+        NW: "西北",
+        SE: "东南",
+        SW: "西南"
+      };
+      return `${localizeForecastText(name)} ${directionMap[direction.toUpperCase()] ?? direction} ${distance} 公里`;
+    })
+    .replace(/^south of the (.+)$/i, "$1 以南海域")
+    .replace(/^north of the (.+)$/i, "$1 以北海域")
+    .replace(/^east of the (.+)$/i, "$1 以东海域")
+    .replace(/^west of the (.+)$/i, "$1 以西海域")
+    .replace(/^Wildfire\s+/i, "野火：")
+    .replace(/\bTristan da Cunha\b/g, "特里斯坦-达库尼亚")
+    .replace(/\bMatsubase\b/g, "松桥")
+    .replace(/\bJapan\b/g, "日本")
+    .replace(/\bFiji\b/g, "斐济")
+    .replace(/\bCalifornia\b/g, "加利福尼亚")
+    .replace(/\bUtah\b/g, "犹他")
+    .replace(/\bSouth Dakota\b/g, "南达科他")
+    .replace(/\bNew Mexico\b/g, "新墨西哥")
+    .replace(/\bMillard\b/g, "米勒德")
+    .replace(/\bJackson\b/g, "杰克逊")
+    .replace(/\bKern\b/g, "克恩")
+    .replace(/\bColfax\b/g, "科尔法克斯")
+    .replace(/\bWidemouth 2\b/g, "宽口二号")
+    .replace(/\bPotato Creek\b/g, "土豆溪")
+    .replace(/\bFISH\b/g, "鱼溪")
+    .replace(/\bregion\b/gi, "地区")
+    .replace(/\bIslands\b/g, "群岛")
+    .replace(/\bIsland\b/g, "岛")
+    .trim();
+}
+
+const normaForecastCacheKey = "norma.forecast.daily.v1";
+const oneDayMs = 24 * 60 * 60 * 1000;
+
+type CachedNormaForecast = {
+  forecast: NormaForecastResponse;
+  nextRefreshAt: number;
+};
+
+function getNextLocalMidnight(from = new Date()) {
+  const next = new Date(from);
+  next.setHours(24, 0, 0, 0);
+  return next.getTime();
+}
+
+function formatForecastTime(value?: string) {
+  if (!value) return "时间待确认";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
 
 function getRequiredArchiveId(moduleId: HoloModuleId, record: ArchiveRecord) {
   if (moduleId !== "kings" || !record.deepView) return null;
@@ -4073,9 +4246,144 @@ function SurveillanceGlobePanel({
   onAccessLog?: (log: Omit<AccessLog, "id" | "at">) => void;
 }) {
   const clearance = profile?.clearance ?? 1;
-  const activeCount = surveillanceAnomalies.filter((item) => item.status !== "RESOLVED").length;
+  const [forecastSignals, setForecastSignals] = useState<SurveillanceAnomaly[]>(fallbackNormaForecastSignals);
+  const [forecastSourceStatus, setForecastSourceStatus] = useState<NormaForecastResponse["sourceStatus"]>("FALLBACK");
+  const [forecastUpdatedAt, setForecastUpdatedAt] = useState<string | null>(null);
+  const [selectedAnomalyCode, setSelectedAnomalyCode] = useState("");
+  const [reviewState, setReviewState] = useState<Record<string, AnomalyReviewState>>({});
+  const activeCount = forecastSignals.filter((item) => item.status !== "RESOLVED").length;
+  const forecastSourceLabel =
+    forecastSourceStatus === "LIVE" ? "实时接入" : forecastSourceStatus === "DEGRADED" ? "部分降级" : "本地缓存";
+  const selectedAnomaly = forecastSignals.find((item) => item.code === selectedAnomalyCode) ?? null;
+  const selectedLocked = selectedAnomaly ? clearance < selectedAnomaly.clearance : false;
+  const selectedReviewStatus = selectedAnomaly ? reviewState[selectedAnomaly.code] ?? selectedAnomaly.status : "OFFLINE";
+  const selectedReviewLog =
+    selectedReviewStatus === "EXECUTIVE REVIEW"
+      ? "执行部旁路监听已加入该异常。NORMA 将等待二次证据交叉验证。"
+      : selectedReviewStatus === "ARCHIVE LINKED"
+        ? "证据库与相关龙王档案索引已建立。受限内容仍遵循当前专员权限。"
+        : selectedReviewStatus === "WATCH"
+          ? "异常已转入持续观察。系统不会生成强制任务，仅保留态势记录。"
+          : "等待专员复核。该异常不会被视为主线任务。";
+  const signalSources = selectedAnomaly
+    ? [
+        `SAT-07 / ${selectedAnomaly.coordinate}`,
+        `CITY NODE / ${selectedAnomaly.signal}`,
+        `ARCHIVE CROSSREF / ${selectedAnomaly.level}`
+      ]
+    : [];
+  const reviewActions: Array<{ id: AnomalyReviewState; label: string; detail: string }> = [
+    { id: "EXECUTIVE REVIEW", label: "请求执行部复核", detail: "把异常交给执行部旁路监听，但不生成强制行动。" },
+    { id: "ARCHIVE LINKED", label: "关联档案索引", detail: "建立证据库、龙王档案与该异常的交叉引用。" },
+    { id: "WATCH", label: "标记持续观察", detail: "维持低频采样，等待新的信号进入队列。" }
+  ];
+
+  const selectedForecastStatus =
+    selectedReviewStatus === "ELEVATE FORECAST" || selectedReviewStatus === "LINK ARCHIVE" || selectedReviewStatus === "KEEP WATCH"
+      ? selectedReviewStatus
+      : selectedAnomaly?.status ?? "OFFLINE";
+  const selectedForecastLog =
+    selectedForecastStatus === "ELEVATE FORECAST"
+      ? "该灾害信号已被上调为龙王复苏预测，NORMA 将扩大采样范围并等待第二组自然灾害数据交叉验证。"
+      : selectedForecastStatus === "LINK ARCHIVE"
+        ? "相关龙王档案与灾害信号已建立索引。受限内容仍遵循当前专员权限。"
+        : selectedForecastStatus === "KEEP WATCH"
+          ? "该信号保留为持续监听状态。系统不会生成强制任务，仅更新复苏概率曲线。"
+          : "等待专员判读。该记录代表自然灾害征兆，不代表事件已经发生。";
+  const forecastSources = selectedAnomaly
+    ? [
+        `OBSERVED / ${formatForecastTime(selectedAnomaly.observedAt)}`,
+        `DISASTER FEED / ${selectedAnomaly.disasterType ?? selectedAnomaly.level}`,
+        `SAT-07 / ${selectedAnomaly.coordinate}`,
+        `SIGNAL / ${selectedAnomaly.signal}`,
+        `KING INDEX / ${selectedAnomaly.predictedKing ?? "UNKNOWN"} ${selectedAnomaly.probability ?? 0}%`
+      ]
+    : [];
+  const forecastActions: Array<{ id: AnomalyReviewState; label: string; detail: string }> = [
+    { id: "ELEVATE FORECAST", label: "上调复苏预测", detail: "扩大灾害采样范围，提高对应龙王复苏概率权重。" },
+    { id: "LINK ARCHIVE", label: "关联龙王档案", detail: "建立自然灾害、龙王档案与证据库之间的索引。" },
+    { id: "KEEP WATCH", label: "持续监听", detail: "不派遣执行部，仅追踪灾害链和概率曲线。" }
+  ];
+
+  useEffect(() => {
+    let cancelled = false;
+    let refreshTimeout: number | null = null;
+    let refreshInterval: number | null = null;
+
+    function applyForecast(forecast: NormaForecastResponse) {
+      if (cancelled || !forecast.signals.length) return;
+
+      setForecastSignals(forecast.signals);
+      setForecastSourceStatus(forecast.sourceStatus);
+      setForecastUpdatedAt(forecast.updatedAt);
+      setSelectedAnomalyCode((current) => {
+        return forecast.signals.some((signal) => signal.code === current) ? current : "";
+      });
+    }
+
+    async function loadForecast() {
+      try {
+        const response = await fetch("/api/norma/forecast", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const forecast = (await response.json()) as NormaForecastResponse;
+        if (!forecast.signals.length) return;
+        applyForecast(forecast);
+        window.localStorage.setItem(
+          normaForecastCacheKey,
+          JSON.stringify({
+            forecast,
+            nextRefreshAt: getNextLocalMidnight()
+          } satisfies CachedNormaForecast)
+        );
+      } catch {
+        if (cancelled) return;
+        setForecastSignals(fallbackNormaForecastSignals);
+        setForecastSourceStatus("FALLBACK");
+        setForecastUpdatedAt(new Date().toISOString());
+      }
+    }
+
+    const cachedRaw = window.localStorage.getItem(normaForecastCacheKey);
+    let nextRefreshAt = getNextLocalMidnight();
+
+    if (cachedRaw) {
+      try {
+        const cached = JSON.parse(cachedRaw) as CachedNormaForecast;
+        if (cached.forecast?.signals?.length) {
+          applyForecast(cached.forecast);
+          nextRefreshAt = cached.nextRefreshAt;
+        }
+        if (!cached.nextRefreshAt || Date.now() >= cached.nextRefreshAt) {
+          loadForecast();
+          nextRefreshAt = getNextLocalMidnight();
+        }
+      } catch {
+        loadForecast();
+      }
+    } else {
+      loadForecast();
+    }
+
+    refreshTimeout = window.setTimeout(
+      () => {
+        loadForecast();
+        refreshInterval = window.setInterval(loadForecast, oneDayMs);
+      },
+      Math.max(1000, nextRefreshAt - Date.now())
+    );
+
+    return () => {
+      cancelled = true;
+      if (refreshTimeout !== null) window.clearTimeout(refreshTimeout);
+      if (refreshInterval !== null) window.clearInterval(refreshInterval);
+    };
+  }, []);
 
   const openAnomaly = (item: SurveillanceAnomaly) => {
+    const alreadyOpen = selectedAnomalyCode === item.code;
+    setSelectedAnomalyCode(alreadyOpen ? "" : item.code);
+    if (alreadyOpen) return;
+
     const locked = clearance < item.clearance;
 
     if (locked) {
@@ -4108,6 +4416,88 @@ function SurveillanceGlobePanel({
     });
   };
 
+  const applyReviewAction = (item: SurveillanceAnomaly, action: AnomalyReviewState) => {
+    const locked = clearance < item.clearance;
+
+    if (locked) {
+      onAccessLog?.({
+        action: "DENIED_ACCESS",
+        target: `SURVEILLANCE REVIEW / ${item.code}`,
+        result: "DENIED",
+        detail: `CLEARANCE ${item.clearance} REQUIRED`
+      });
+      return;
+    }
+
+    setReviewState((current) => ({ ...current, [item.code]: action }));
+    onAccessLog?.({
+      action: "EVIDENCE_QUERY",
+      target: `SURVEILLANCE REVIEW / ${item.code}`,
+      result: "ALLOWED",
+      detail: action
+    });
+    onSelectRecord({
+      title: `${item.code} / ${item.title}`,
+      level: item.level,
+      status: action,
+      detail: `${item.location} / ${selectedForecastLog} NORMA 建议：${item.recommendation}`
+    });
+  };
+
+  const renderForecastDesk = () => {
+    if (!selectedAnomaly) return null;
+
+    return (
+      <article className={`surveillance-review-desk${selectedLocked ? " is-locked" : ""}`}>
+        <header>
+          <span>NORMA FORECAST DESK</span>
+          <strong>{selectedLocked ? `CLEARANCE ${selectedAnomaly.clearance} REQUIRED` : selectedForecastStatus}</strong>
+        </header>
+        <h3>{selectedAnomaly.code} / {localizeForecastText(selectedAnomaly.title)}</h3>
+        <p>{selectedLocked ? "该信号已转入受限序列。当前专员仅可读取坐标、标题和风险索引。" : selectedAnomaly.summary}</p>
+        <div className="surveillance-review-grid">
+          <div>
+            <span>RISK LEVEL</span>
+            <strong>{selectedAnomaly.level}</strong>
+          </div>
+          <div>
+            <span>LOCATION</span>
+            <strong>{localizeForecastText(selectedAnomaly.location)}</strong>
+          </div>
+          <div>
+            <span>PREDICTED KING</span>
+            <strong>{selectedAnomaly.predictedKing}</strong>
+          </div>
+          <div>
+            <span>PROBABILITY</span>
+            <strong>{selectedAnomaly.probability}%</strong>
+          </div>
+        </div>
+        <div className="surveillance-probability-meter" aria-hidden="true">
+          <span style={{ width: `${selectedAnomaly.probability ?? 0}%` }} />
+        </div>
+        <div className="surveillance-indicator-list">
+          {(selectedAnomaly.indicators ?? []).map((indicator) => (
+            <em key={indicator}>{indicator}</em>
+          ))}
+        </div>
+        <div className="surveillance-source-list">
+          {forecastSources.map((source) => (
+            <em key={source}>{source}</em>
+          ))}
+        </div>
+        <div className="surveillance-norma-note">
+          <span>NORMA JUDGEMENT</span>
+          <p>{selectedLocked ? `需要 CLEARANCE ${selectedAnomaly.clearance} 后读取完整判断。` : selectedAnomaly.norma}</p>
+        </div>
+        <div className="surveillance-norma-note">
+          <span>REVIEW RESULT</span>
+          <p>{selectedForecastLog}</p>
+        </div>
+      </article>
+    );
+  };
+
   return (
     <section
       className="surveillance-globe-panel"
@@ -4115,8 +4505,8 @@ function SurveillanceGlobePanel({
       aria-label="全球预警与异常投影"
     >
       <header className="surveillance-globe-header">
-        <span>SURVEILLANCE GRID / GLOBAL ANOMALY PROJECTION</span>
-        <strong>ACTIVE {activeCount} / CLEARANCE {clearance}</strong>
+        <span>SURVEILLANCE GRID / DRAGON KING FORECAST</span>
+        <strong>ACTIVE {activeCount} / {forecastSourceLabel} / CLEARANCE {clearance}</strong>
       </header>
       <div className="surveillance-globe-layout">
         <div className="surveillance-earth-wrap" aria-label="可拖动旋转的地球投影">
@@ -4128,7 +4518,7 @@ function SurveillanceGlobePanel({
             onWheel={(event) => event.stopPropagation()}
           >
             <GlobeStreamEarth
-              anomalies={surveillanceAnomalies}
+              anomalies={forecastSignals}
               clearance={clearance}
               onOpenAnomaly={openAnomaly}
             />
@@ -4136,30 +4526,97 @@ function SurveillanceGlobePanel({
           <div className="surveillance-scanline" aria-hidden="true" />
           <div className="surveillance-link-status">
             <span>NORMA-SAT-07</span>
-            <strong>LINK STABLE / RANGE 1200KM</strong>
+            <strong>{forecastSourceLabel} / {forecastUpdatedAt ? new Date(forecastUpdatedAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }) : "同步中"}</strong>
           </div>
         </div>
         <div className="surveillance-anomaly-list">
-          <span>WARNING / ANOMALY MERGED QUEUE</span>
-          <h2>预警与异常记录</h2>
-          {surveillanceAnomalies.map((item) => {
+          <span>GLOBAL DISASTER FEED / KING PROBABILITY</span>
+          <h2>灾害征兆预测</h2>
+          {forecastSignals.map((item) => {
             const locked = clearance < item.clearance;
+            const active = selectedAnomaly?.code === item.code;
             return (
-              <button
-                key={item.code}
+              <div key={item.code} className="surveillance-forecast-row">
+                <button
                 type="button"
-                className={`surveillance-anomaly-card${locked ? " is-locked" : ""}`}
+                className={`surveillance-anomaly-card${locked ? " is-locked" : ""}${active ? " is-active" : ""}`}
                 onClick={() => openAnomaly(item)}
               >
                 <header>
                   <span>{item.code}</span>
-                  <strong>{locked ? `C-${item.clearance} REQUIRED` : item.status}</strong>
-                </header>
-                <h3>{item.title}</h3>
-                <p>{locked ? "权限不足，仅显示预警索引。" : item.signal}</p>
-              </button>
+                  <strong>{locked ? `C-${item.clearance} REQUIRED` : reviewState[item.code] ?? `${item.predictedKing} ${item.probability}%`}</strong>
+                  </header>
+                  <h3>{localizeForecastText(item.title)}</h3>
+                  <em className="surveillance-card-time">{formatForecastTime(item.observedAt)}</em>
+                  <p>{locked ? "权限不足，仅显示灾害索引。" : `${item.disasterType} / ${item.signal}`}</p>
+                </button>
+                {active ? renderForecastDesk() : null}
+              </div>
             );
           })}
+          {selectedAnomaly ? (
+            <article className={`surveillance-review-desk${selectedLocked ? " is-locked" : ""}`}>
+              <header>
+                <span>NORMA FORECAST DESK</span>
+                <strong>{selectedLocked ? `CLEARANCE ${selectedAnomaly.clearance} REQUIRED` : selectedForecastStatus}</strong>
+              </header>
+              <h3>{selectedAnomaly.code} / {localizeForecastText(selectedAnomaly.title)}</h3>
+              <p>{selectedLocked ? "该异常已转入受限序列。当前专员仅可读取坐标、标题和风险索引。" : selectedAnomaly.summary}</p>
+              <div className="surveillance-review-grid">
+                <div>
+                  <span>RISK LEVEL</span>
+                  <strong>{selectedAnomaly.level}</strong>
+                </div>
+                <div>
+                  <span>LOCATION</span>
+                  <strong>{localizeForecastText(selectedAnomaly.location)}</strong>
+                </div>
+                <div>
+                  <span>PREDICTED KING</span>
+                  <strong>{selectedAnomaly.predictedKing}</strong>
+                </div>
+                <div>
+                  <span>PROBABILITY</span>
+                  <strong>{selectedAnomaly.probability}%</strong>
+                </div>
+              </div>
+              <div className="surveillance-probability-meter" aria-hidden="true">
+                <span style={{ width: `${selectedAnomaly.probability ?? 0}%` }} />
+              </div>
+              <div className="surveillance-indicator-list">
+                {(selectedAnomaly.indicators ?? []).map((indicator) => (
+                  <em key={indicator}>{indicator}</em>
+                ))}
+              </div>
+              <div className="surveillance-source-list">
+                {forecastSources.map((source) => (
+                  <em key={source}>{source}</em>
+                ))}
+              </div>
+              <div className="surveillance-norma-note">
+                <span>NORMA JUDGEMENT</span>
+                <p>{selectedLocked ? `需要 CLEARANCE ${selectedAnomaly.clearance} 后读取完整判断。` : selectedAnomaly.norma}</p>
+              </div>
+              <div className="surveillance-norma-note">
+                <span>REVIEW RESULT</span>
+                <p>{selectedForecastLog}</p>
+              </div>
+              <div className="surveillance-review-actions">
+                {forecastActions.map((action) => (
+                  <button
+                    key={action.id}
+                    type="button"
+                    disabled={selectedLocked}
+                    className={selectedForecastStatus === action.id ? "is-active" : ""}
+                    title={action.detail}
+                    onClick={() => applyReviewAction(selectedAnomaly, action.id)}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            </article>
+          ) : null}
         </div>
       </div>
     </section>
@@ -4220,7 +4677,7 @@ function GlobeStreamEarth({
             opacity: 0
           },
           earth: {
-            color: "#13162c",
+            color: "#070914",
             material: "MeshPhongMaterial",
             dragConfig: {
               rotationSpeed: 1,
@@ -4230,8 +4687,8 @@ function GlobeStreamEarth({
             }
           },
           mapStyle: {
-            areaColor: "#2e3564",
-            lineColor: "#797eff"
+            areaColor: "#1d63c8",
+            lineColor: "#f4f7ff"
           },
           spriteStyle: {
             color: "#16181d",
@@ -4807,6 +5264,7 @@ export default function HoloTerminal3D({
   const [activeDeepArchive, setActiveDeepArchive] = useState<DeepArchiveId | null>(null);
   const [missionLaunch, setMissionLaunch] = useState<MissionLaunchState | null>(null);
   const [workdeskOpen, setWorkdeskOpen] = useState(false);
+  const detailDrawerRef = useRef<HTMLDivElement>(null);
   const activeModule = modules.find((module) => module.id === activePreset) ?? modules[0];
   const isFinger = agentName.trim() === "芬格尔";
   const interfaceName = isFinger ? "EVA" : "NORMA";
@@ -4841,6 +5299,19 @@ export default function HoloTerminal3D({
 
     return () => window.clearTimeout(timer);
   }, [missionLaunch]);
+
+  useEffect(() => {
+    if (!selectedRecord || activeModule.id === "overview" || inDeepArchive) return;
+
+    const closeDetailOnOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && detailDrawerRef.current?.contains(target)) return;
+      setSelectedRecord(null);
+    };
+
+    document.addEventListener("pointerdown", closeDetailOnOutsidePointerDown, true);
+    return () => document.removeEventListener("pointerdown", closeDetailOnOutsidePointerDown, true);
+  }, [activeModule.id, inDeepArchive, selectedRecord]);
 
   return (
     <main
@@ -4960,7 +5431,11 @@ export default function HoloTerminal3D({
               onAccessLog={onAccessLog}
             />
           )}
-          {activeModule.id !== "overview" && selectedRecord ? <ArchiveDetailDrawer module={activeModule} record={selectedRecord} /> : null}
+          {activeModule.id !== "overview" && activeModule.id !== "surveillance" && selectedRecord ? (
+            <div ref={detailDrawerRef}>
+              <ArchiveDetailDrawer module={activeModule} record={selectedRecord} />
+            </div>
+          ) : null}
           <div className="holo-preset-bar">
             {modules.map((module) => (
               <button

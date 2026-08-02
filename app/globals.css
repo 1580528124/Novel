@@ -8632,6 +8632,32 @@ button:disabled:hover {
   max-height: 430px;
   overflow: auto;
   padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(72, 214, 194, 0.48) rgba(2, 8, 7, 0.92);
+}
+
+.surveillance-anomaly-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.surveillance-anomaly-list::-webkit-scrollbar-track {
+  border-left: 1px solid rgba(72, 214, 194, 0.14);
+  background:
+    linear-gradient(180deg, rgba(72, 214, 194, 0.1), transparent 26%, transparent 74%, rgba(216, 189, 102, 0.1)),
+    #020807;
+}
+
+.surveillance-anomaly-list::-webkit-scrollbar-thumb {
+  border: 2px solid #020807;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(72, 214, 194, 0.76), rgba(216, 189, 102, 0.62));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 14px rgba(72, 214, 194, 0.28);
+}
+
+.surveillance-anomaly-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(95, 238, 220, 0.9), rgba(231, 221, 170, 0.78));
 }
 
 .surveillance-anomaly-list > span {
@@ -8650,10 +8676,19 @@ button:disabled:hover {
   letter-spacing: 0.05em;
 }
 
+.surveillance-forecast-row {
+  display: grid;
+  gap: 10px;
+}
+
+.surveillance-anomaly-list > .surveillance-review-desk {
+  display: none;
+}
+
 .surveillance-anomaly-card {
   position: relative;
-  min-height: 94px;
-  padding: 13px 15px;
+  min-height: 116px;
+  padding: 15px 15px 17px;
   border: 1px solid rgba(72, 214, 194, 0.2);
   background:
     linear-gradient(135deg, rgba(72, 214, 194, 0.08), transparent 58%),
@@ -8674,6 +8709,16 @@ button:disabled:hover {
   transform: translateY(-1px);
 }
 
+.surveillance-anomaly-card.is-active {
+  border-color: rgba(231, 221, 170, 0.7);
+  background:
+    linear-gradient(135deg, rgba(216, 189, 102, 0.16), transparent 62%),
+    #07100e;
+  box-shadow:
+    inset 0 0 0 1px rgba(231, 221, 170, 0.08),
+    0 0 22px rgba(216, 189, 102, 0.08);
+}
+
 .surveillance-anomaly-card header {
   display: flex;
   justify-content: space-between;
@@ -8685,7 +8730,7 @@ button:disabled:hover {
 }
 
 .surveillance-anomaly-card h3 {
-  margin: 14px 0 4px;
+  margin: 14px 0 6px;
   color: rgba(255, 255, 255, 0.82);
   font-family: var(--font-engraved);
   font-size: 18px;
@@ -8700,12 +8745,182 @@ button:disabled:hover {
   line-height: 1.55;
 }
 
+.surveillance-card-time {
+  display: block;
+  margin: 0 0 7px;
+  color: rgba(72, 214, 194, 0.62);
+  font-family: var(--font-terminal);
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: 0.12em;
+}
+
 .surveillance-anomaly-card.is-locked {
   border-color: rgba(158, 83, 70, 0.28);
   background:
     repeating-linear-gradient(135deg, rgba(158, 83, 70, 0.08) 0 8px, transparent 9px 18px),
     #040605;
   opacity: 0.72;
+}
+
+.surveillance-review-desk {
+  display: grid;
+  gap: 13px;
+  margin-top: 6px;
+  padding: 16px;
+  border: 1px solid rgba(216, 189, 102, 0.34);
+  background: #050706;
+  box-shadow:
+    inset 0 0 34px rgba(216, 189, 102, 0.08),
+    0 18px 44px rgba(0, 0, 0, 0.34);
+}
+
+.surveillance-review-desk header,
+.surveillance-review-grid,
+.surveillance-review-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.surveillance-review-desk header {
+  align-items: center;
+  justify-content: space-between;
+  color: rgba(216, 189, 102, 0.82);
+  font-family: var(--font-terminal);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.surveillance-review-desk h3 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: var(--font-engraved);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.surveillance-review-desk p {
+  margin: 0;
+  color: rgba(229, 228, 204, 0.68);
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.surveillance-review-grid {
+  flex-wrap: wrap;
+}
+
+.surveillance-review-grid div {
+  flex: 1 1 150px;
+  padding: 10px 12px;
+  border: 1px solid rgba(72, 214, 194, 0.16);
+  background: #020807;
+}
+
+.surveillance-review-grid span,
+.surveillance-norma-note span {
+  display: block;
+  margin-bottom: 5px;
+  color: rgba(72, 214, 194, 0.66);
+  font-family: var(--font-terminal);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.surveillance-review-grid strong {
+  color: rgba(255, 255, 255, 0.8);
+  font-family: var(--font-terminal);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.surveillance-source-list {
+  display: grid;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(72, 214, 194, 0.3);
+}
+
+.surveillance-probability-meter {
+  height: 7px;
+  border: 1px solid rgba(72, 214, 194, 0.22);
+  background: #020807;
+  overflow: hidden;
+}
+
+.surveillance-probability-meter span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(72, 214, 194, 0.72), rgba(216, 189, 102, 0.9));
+  box-shadow: 0 0 18px rgba(72, 214, 194, 0.28);
+}
+
+.surveillance-indicator-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.surveillance-indicator-list em {
+  padding: 5px 8px;
+  border: 1px solid rgba(216, 189, 102, 0.22);
+  background: #020807;
+  color: rgba(231, 221, 170, 0.72);
+  font-family: var(--font-terminal);
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+}
+
+.surveillance-source-list em {
+  color: rgba(231, 221, 170, 0.68);
+  font-family: var(--font-terminal);
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 0.1em;
+}
+
+.surveillance-norma-note {
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #020807;
+}
+
+.surveillance-review-actions {
+  flex-wrap: wrap;
+}
+
+.surveillance-review-actions button {
+  flex: 1 1 132px;
+  min-height: 38px;
+  border: 1px solid rgba(216, 189, 102, 0.36);
+  background: #090906;
+  color: rgba(231, 221, 170, 0.86);
+  font-family: var(--font-terminal);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+
+.surveillance-review-actions button:hover:not(:disabled),
+.surveillance-review-actions button.is-active {
+  border-color: rgba(231, 221, 170, 0.76);
+  background: #171205;
+}
+
+.surveillance-review-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.surveillance-globe-panel .surveillance-review-actions {
+  display: none;
+}
+
+.surveillance-review-desk.is-locked {
+  border-color: rgba(158, 83, 70, 0.34);
+  background: #050504;
 }
 
 @keyframes surveillance-grid-drift {
