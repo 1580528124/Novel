@@ -249,6 +249,63 @@ type AnomalyReviewState =
   | "LINK ARCHIVE"
   | "KEEP WATCH";
 
+const dragonKingForecastOrder = [
+  "大地与山之王",
+  "青铜与火之王",
+  "海洋与水之王",
+  "天空与风之王"
+];
+
+const dragonKingSignalProfiles: Record<string, { short: string; signal: string; clearance: number }> = {
+  "大地与山之王": { short: "地山", signal: "地震 / 火山 / 地壳应力", clearance: 2 },
+  "青铜与火之王": { short: "青火", signal: "野火 / 热源 / 火山活动", clearance: 2 },
+  "海洋与水之王": { short: "海水", signal: "洪水 / 海冰 / 水文异常", clearance: 3 },
+  "天空与风之王": { short: "天空", signal: "气旋 / 风暴 / 高空异常", clearance: 3 }
+};
+
+const dragonKingProjectionColors: Record<string, string> = {
+  "大地与山之王": "#d8bd66",
+  "青铜与火之王": "#ff7043",
+  "海洋与水之王": "#52e5ff",
+  "天空与风之王": "#cd79ff"
+};
+
+function formatForecastTrend(trend: string) {
+  if (trend === "CLUSTER") return "聚合";
+  if (trend === "WATCH") return "观察";
+  if (trend === "QUIET") return "静默";
+  return trend;
+}
+
+function formatEvidenceCount(count: number) {
+  return `${count} 条证据`;
+}
+
+function formatClearanceRequired(clearance: number) {
+  return `需要 C-${clearance} 权限`;
+}
+
+function formatDetailAccess(locked: boolean, clearance: number) {
+  return locked ? `完整研判需 C-${clearance}` : "完整研判开放";
+}
+
+function formatForecastDisplayStatus(status: string) {
+  const statusMap: Record<string, string> = {
+    "EXECUTIVE REVIEW": "执行部复核",
+    "ARCHIVE LINKED": "已关联档案",
+    WATCH: "持续观察",
+    "ELEVATE FORECAST": "上调复苏预测",
+    "LINK ARCHIVE": "关联龙王档案",
+    "KEEP WATCH": "持续监听",
+    SEALED: "封存",
+    FORECASTING: "研判中",
+    RESOLVED: "已归档",
+    OFFLINE: "离线"
+  };
+
+  return statusMap[status] ?? status;
+}
+
 const surveillanceAnomalies: SurveillanceAnomaly[] = [
   {
     code: "BJ-METRO-07",
@@ -4250,6 +4307,8 @@ function SurveillanceGlobePanel({
   const [forecastSourceStatus, setForecastSourceStatus] = useState<NormaForecastResponse["sourceStatus"]>("FALLBACK");
   const [forecastUpdatedAt, setForecastUpdatedAt] = useState<string | null>(null);
   const [selectedAnomalyCode, setSelectedAnomalyCode] = useState("");
+  const [activeKingFilter, setActiveKingFilter] = useState<string | null>(null);
+  const [forecastView, setForecastView] = useState<"matrix" | "evidence">("evidence");
   const [reviewState, setReviewState] = useState<Record<string, AnomalyReviewState>>({});
   const activeCount = forecastSignals.filter((item) => item.status !== "RESOLVED").length;
   const forecastSourceLabel =
@@ -4304,6 +4363,41 @@ function SurveillanceGlobePanel({
     { id: "LINK ARCHIVE", label: "关联龙王档案", detail: "建立自然灾害、龙王档案与证据库之间的索引。" },
     { id: "KEEP WATCH", label: "持续监听", detail: "不派遣执行部，仅追踪灾害链和概率曲线。" }
   ];
+
+  const kingForecastMatrix = useMemo(() => {
+    return dragonKingForecastOrder.map((king) => {
+      const profile = dragonKingSignalProfiles[king];
+      const signals = forecastSignals
+        .filter((item) => item.predictedKing === king)
+        .sort((a, b) => (b.probability ?? 0) - (a.probability ?? 0));
+      const maxProbability = signals[0]?.probability ?? 0;
+      const averageProbability = signals.length
+        ? Math.round(signals.reduce((total, item) => total + (item.probability ?? 0), 0) / signals.length)
+        : 0;
+      const probability = Math.max(maxProbability, averageProbability);
+      const trend = signals.length >= 3 ? "CLUSTER" : signals.length > 0 ? "WATCH" : "QUIET";
+      const requiredClearance = Math.max(profile.clearance, ...signals.map((item) => item.clearance));
+
+      return {
+        king,
+        short: profile.short,
+        signal: profile.signal,
+        probability,
+        trend,
+        requiredClearance,
+        signals: signals.slice(0, 4)
+      };
+    });
+  }, [forecastSignals]);
+  const visibleKingForecastMatrix = activeKingFilter
+    ? kingForecastMatrix.filter((item) => item.king === activeKingFilter)
+    : kingForecastMatrix;
+  const leadingKingForecast = [...kingForecastMatrix].sort((a, b) => b.probability - a.probability)[0] ?? null;
+  const readableSignalCount = forecastSignals.filter((item) => clearance >= item.clearance).length;
+  const restrictedSignalCount = forecastSignals.length - readableSignalCount;
+  const activeProjection = activeKingFilter
+    ? kingForecastMatrix.find((item) => item.king === activeKingFilter) ?? null
+    : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -4381,26 +4475,27 @@ function SurveillanceGlobePanel({
 
   const openAnomaly = (item: SurveillanceAnomaly) => {
     const alreadyOpen = selectedAnomalyCode === item.code;
-    setSelectedAnomalyCode(alreadyOpen ? "" : item.code);
-    if (alreadyOpen) return;
-
     const locked = clearance < item.clearance;
 
     if (locked) {
+      setSelectedAnomalyCode("");
       onAccessLog?.({
         action: "DENIED_ACCESS",
         target: `SURVEILLANCE / ${item.code}`,
         result: "DENIED",
-        detail: `CLEARANCE ${item.clearance} REQUIRED`
+        detail: formatClearanceRequired(item.clearance)
       });
       onSelectRecord({
         title: `${item.code} / ${item.title}`,
         level: item.level,
-        status: `SEALED / CLEARANCE ${item.clearance} REQUIRED`,
-        detail: `NORMA 拒绝访问完整异常记录。${item.title} 需要 CLEARANCE ${item.clearance}，当前专员仅可读取预警索引。`
+        status: `索引开放 / ${formatClearanceRequired(item.clearance)}`,
+        detail: `NORMA 已记录专员访问请求。${item.title} 的完整异常记录需 C-${item.clearance}，当前仅开放灾害索引。`
       });
       return;
     }
+
+    setSelectedAnomalyCode(alreadyOpen ? "" : item.code);
+    if (alreadyOpen) return;
 
     onAccessLog?.({
       action: "EVIDENCE_QUERY",
@@ -4424,7 +4519,7 @@ function SurveillanceGlobePanel({
         action: "DENIED_ACCESS",
         target: `SURVEILLANCE REVIEW / ${item.code}`,
         result: "DENIED",
-        detail: `CLEARANCE ${item.clearance} REQUIRED`
+        detail: formatClearanceRequired(item.clearance)
       });
       return;
     }
@@ -4450,30 +4545,30 @@ function SurveillanceGlobePanel({
     return (
       <article className={`surveillance-review-desk${selectedLocked ? " is-locked" : ""}`}>
         <header>
-          <span>NORMA FORECAST DESK</span>
-          <strong>{selectedLocked ? `CLEARANCE ${selectedAnomaly.clearance} REQUIRED` : selectedForecastStatus}</strong>
+          <span>NORMA 研判台</span>
+          <strong>{selectedLocked ? formatClearanceRequired(selectedAnomaly.clearance) : formatForecastDisplayStatus(selectedForecastStatus)}</strong>
         </header>
         <h3>{selectedAnomaly.code} / {localizeForecastText(selectedAnomaly.title)}</h3>
         <p>{selectedLocked ? "该信号已转入受限序列。当前专员仅可读取坐标、标题和风险索引。" : selectedAnomaly.summary}</p>
         <div className="surveillance-review-grid">
           <div>
-            <span>RISK LEVEL</span>
+            <span>风险等级</span>
             <strong>{selectedAnomaly.level}</strong>
           </div>
           <div>
-            <span>LOCATION</span>
+            <span>发生位置</span>
             <strong>{localizeForecastText(selectedAnomaly.location)}</strong>
           </div>
           <div className="is-coordinate">
-            <span>COORDINATE</span>
+            <span>坐标</span>
             <strong>{selectedAnomaly.coordinate}</strong>
           </div>
           <div>
-            <span>PREDICTED KING</span>
+            <span>指向龙王</span>
             <strong>{selectedAnomaly.predictedKing}</strong>
           </div>
           <div>
-            <span>PROBABILITY</span>
+            <span>复苏概率</span>
             <strong>{selectedAnomaly.probability}%</strong>
           </div>
         </div>
@@ -4491,11 +4586,11 @@ function SurveillanceGlobePanel({
           ))}
         </div>
         <div className="surveillance-norma-note">
-          <span>NORMA JUDGEMENT</span>
+          <span>NORMA 判断</span>
           <p>{selectedLocked ? `需要 CLEARANCE ${selectedAnomaly.clearance} 后读取完整判断。` : selectedAnomaly.norma}</p>
         </div>
         <div className="surveillance-norma-note">
-          <span>REVIEW RESULT</span>
+          <span>复核状态</span>
           <p>{selectedForecastLog}</p>
         </div>
       </article>
@@ -4525,6 +4620,7 @@ function SurveillanceGlobePanel({
               anomalies={forecastSignals}
               clearance={clearance}
               selectedCode={selectedAnomalyCode}
+              activeKingFilter={activeKingFilter}
               onOpenAnomaly={openAnomaly}
             />
           </div>
@@ -4535,8 +4631,127 @@ function SurveillanceGlobePanel({
           </div>
         </div>
         <div className="surveillance-anomaly-list">
-          <span>GLOBAL DISASTER FEED / KING PROBABILITY</span>
+          <span>全球灾害流 / 龙王概率</span>
           <h2>灾害征兆预测</h2>
+          <article className="surveillance-daily-brief">
+            <header>
+              <span>NORMA 今日判断</span>
+              <strong>{leadingKingForecast ? `${leadingKingForecast.short} / ${leadingKingForecast.probability}%` : "NO SIGNAL"}</strong>
+            </header>
+            <p>
+              {leadingKingForecast
+                ? `主风险指向 ${leadingKingForecast.king}。NORMA 已关联 ${forecastSignals.length} 条自然灾害征兆，其中 ${readableSignalCount} 条可读，${restrictedSignalCount} 条需更高权限复核。`
+                : "当前采样窗口内没有足够征兆形成龙王复苏预测。"}
+            </p>
+          </article>
+          <div className="surveillance-view-tabs">
+            <button
+              type="button"
+              className={forecastView === "evidence" ? "is-active" : ""}
+              onClick={() => setForecastView("evidence")}
+            >
+              证据链
+            </button>
+            <button
+              type="button"
+              className={forecastView === "matrix" ? "is-active" : ""}
+              onClick={() => setForecastView("matrix")}
+            >
+              龙王矩阵
+            </button>
+          </div>
+          <div className={`surveillance-king-board${forecastView === "matrix" ? " is-active" : ""}`}>
+          <div className="surveillance-king-matrix">
+            {kingForecastMatrix.map((item) => {
+              const hasLockedDetail = clearance < item.requiredClearance;
+              return (
+                <button
+                  key={item.king}
+                  type="button"
+                  className={`surveillance-king-card${hasLockedDetail ? " has-locked-detail" : ""}${activeKingFilter === item.king ? " is-projecting" : ""}${activeKingFilter && activeKingFilter !== item.king ? " is-muted" : ""}`}
+                  onClick={() => {
+                    const closingProjection = activeKingFilter === item.king;
+                    setActiveKingFilter(closingProjection ? null : item.king);
+                    setForecastView("evidence");
+                    if (closingProjection) {
+                      setSelectedAnomalyCode("");
+                      return;
+                    }
+                    const firstOpenSignal = item.signals.find((signal) => clearance >= signal.clearance);
+                    const firstSignal = firstOpenSignal ?? item.signals[0];
+                    if (firstSignal) openAnomaly(firstSignal);
+                  }}
+                >
+                  <header>
+                    <span>{item.short}</span>
+                    <strong>{item.probability}%</strong>
+                  </header>
+                  <h3>{item.king}</h3>
+                  <p>{item.signal}</p>
+                  <div className="surveillance-probability-meter" aria-hidden="true">
+                    <span style={{ width: `${item.probability}%` }} />
+                  </div>
+                  <em>{formatForecastTrend(item.trend)} / {formatEvidenceCount(item.signals.length)} / {formatDetailAccess(hasLockedDetail, item.requiredClearance)}</em>
+                </button>
+              );
+            })}
+          </div>
+          </div>
+          <div className={`surveillance-evidence-board${forecastView === "evidence" ? " is-active" : ""}`}>
+          {activeProjection ? (
+            <article className="surveillance-projection-brief">
+              <div>
+                <span>当前投影</span>
+                <strong>{activeProjection.king}</strong>
+                <p>{formatEvidenceCount(activeProjection.signals.length)} / 最高概率 {activeProjection.probability}% / {formatForecastTrend(activeProjection.trend)}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveKingFilter(null);
+                  setSelectedAnomalyCode("");
+                }}
+              >
+                解除投影
+              </button>
+            </article>
+          ) : null}
+          {visibleKingForecastMatrix.map((group) => (
+            <section key={group.king} className="surveillance-evidence-group">
+              <header>
+                <span>{group.king}</span>
+                <strong>{formatForecastTrend(group.trend)} / {formatEvidenceCount(group.signals.length)}</strong>
+              </header>
+              {group.signals.length ? group.signals.map((item) => {
+                const locked = clearance < item.clearance;
+                const active = selectedAnomaly?.code === item.code;
+                return (
+                  <div key={item.code} className="surveillance-forecast-row">
+                    <button
+                      type="button"
+                      className={`surveillance-anomaly-card${locked ? " is-locked" : ""}${active ? " is-active" : ""}`}
+                      onClick={() => openAnomaly(item)}
+                    >
+                      <header>
+                        <span>{item.code}</span>
+                        <strong>{locked ? formatClearanceRequired(item.clearance) : reviewState[item.code] ? formatForecastDisplayStatus(reviewState[item.code]) : `${item.probability}% / ${formatForecastDisplayStatus(item.level)}`}</strong>
+                      </header>
+                      <h3>{localizeForecastText(item.title)}</h3>
+                      <em className="surveillance-card-time">{formatForecastTime(item.observedAt)}</em>
+                      <p>{locked ? `索引开放。完整异常记录需 C-${item.clearance}，已记录专员访问请求。` : `${item.disasterType} / ${item.signal}`}</p>
+                    </button>
+                    {active ? renderForecastDesk() : null}
+                  </div>
+                );
+              }) : (
+                <div className="surveillance-empty-evidence">
+                  <span>{group.short}</span>
+                  <p>NORMA 未在当前采样窗口内发现可关联证据。</p>
+                </div>
+              )}
+            </section>
+          ))}
+          </div>
           {forecastSignals.map((item) => {
             const locked = clearance < item.clearance;
             const active = selectedAnomaly?.code === item.code;
@@ -4549,7 +4764,7 @@ function SurveillanceGlobePanel({
               >
                 <header>
                   <span>{item.code}</span>
-                  <strong>{locked ? `C-${item.clearance} REQUIRED` : reviewState[item.code] ?? `${item.predictedKing} ${item.probability}%`}</strong>
+                  <strong>{locked ? formatClearanceRequired(item.clearance) : reviewState[item.code] ? formatForecastDisplayStatus(reviewState[item.code]) : `${item.predictedKing} ${item.probability}%`}</strong>
                   </header>
                   <h3>{localizeForecastText(item.title)}</h3>
                   <em className="surveillance-card-time">{formatForecastTime(item.observedAt)}</em>
@@ -4562,26 +4777,26 @@ function SurveillanceGlobePanel({
           {selectedAnomaly ? (
             <article className={`surveillance-review-desk${selectedLocked ? " is-locked" : ""}`}>
               <header>
-                <span>NORMA FORECAST DESK</span>
-                <strong>{selectedLocked ? `CLEARANCE ${selectedAnomaly.clearance} REQUIRED` : selectedForecastStatus}</strong>
+                <span>NORMA 研判台</span>
+                <strong>{selectedLocked ? formatClearanceRequired(selectedAnomaly.clearance) : formatForecastDisplayStatus(selectedForecastStatus)}</strong>
               </header>
               <h3>{selectedAnomaly.code} / {localizeForecastText(selectedAnomaly.title)}</h3>
               <p>{selectedLocked ? "该异常已转入受限序列。当前专员仅可读取坐标、标题和风险索引。" : selectedAnomaly.summary}</p>
               <div className="surveillance-review-grid">
                 <div>
-                  <span>RISK LEVEL</span>
+                  <span>风险等级</span>
                   <strong>{selectedAnomaly.level}</strong>
                 </div>
                 <div>
-                  <span>LOCATION</span>
+                  <span>发生位置</span>
                   <strong>{localizeForecastText(selectedAnomaly.location)}</strong>
                 </div>
                 <div>
-                  <span>PREDICTED KING</span>
+                  <span>指向龙王</span>
                   <strong>{selectedAnomaly.predictedKing}</strong>
                 </div>
                 <div>
-                  <span>PROBABILITY</span>
+                  <span>复苏概率</span>
                   <strong>{selectedAnomaly.probability}%</strong>
                 </div>
               </div>
@@ -4599,11 +4814,11 @@ function SurveillanceGlobePanel({
                 ))}
               </div>
               <div className="surveillance-norma-note">
-                <span>NORMA JUDGEMENT</span>
+                <span>NORMA 判断</span>
                 <p>{selectedLocked ? `需要 CLEARANCE ${selectedAnomaly.clearance} 后读取完整判断。` : selectedAnomaly.norma}</p>
               </div>
               <div className="surveillance-norma-note">
-                <span>REVIEW RESULT</span>
+                <span>复核状态</span>
                 <p>{selectedForecastLog}</p>
               </div>
               <div className="surveillance-review-actions">
@@ -4740,15 +4955,62 @@ function createSelectedAnomalyGlow(item: SurveillanceAnomaly) {
   return group;
 }
 
+function createKingEvidenceProjection(signals: SurveillanceAnomaly[], king: string) {
+  const group = new THREE.Group();
+  const texture = createRadialGlowTexture();
+  if (!texture) return group;
+
+  const color = dragonKingProjectionColors[king] ?? "#cd79ff";
+  signals.forEach((item) => {
+    const point = new THREE.Group();
+    point.position.copy(getGlobeSurfacePosition(160, item.lon, item.lat, 1.032));
+
+    const halo = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: texture.clone(),
+        color,
+        transparent: true,
+        opacity: 0.82,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: true,
+        toneMapped: false
+      })
+    );
+    halo.scale.set(18, 18, 1);
+
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry(1.5, 14, 14),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 1,
+        depthWrite: false,
+        depthTest: true,
+        toneMapped: false
+      })
+    );
+
+    point.add(halo, core);
+    point.userData = { code: item.code, kingProjection: true };
+    group.add(point);
+  });
+
+  group.userData = { kingProjection: true, king };
+  return group;
+}
+
 function GlobeStreamEarth({
   anomalies,
   clearance,
   selectedCode,
+  activeKingFilter,
   onOpenAnomaly
 }: {
   anomalies: SurveillanceAnomaly[];
   clearance: number;
   selectedCode: string;
+  activeKingFilter: string | null;
   onOpenAnomaly: (item: SurveillanceAnomaly) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -4760,6 +5022,7 @@ function GlobeStreamEarth({
   const targetRotationYRef = useRef<number | null>(null);
   const focusHoldUntilRef = useRef(0);
   const selectedGlowRef = useRef<THREE.Group | null>(null);
+  const kingProjectionRef = useRef<THREE.Group | null>(null);
 
   useEffect(() => {
     onOpenRef.current = onOpenAnomaly;
@@ -4785,6 +5048,29 @@ function GlobeStreamEarth({
     selectedGlowRef.current = createSelectedAnomalyGlow(selected);
     globe.mainContainer?.add(selectedGlowRef.current as any);
   }, [anomalies, selectedCode]);
+
+  useEffect(() => {
+    const globe = globeChartRef.current;
+    if (kingProjectionRef.current) {
+      (kingProjectionRef.current.parent as any)?.remove(kingProjectionRef.current as any);
+      kingProjectionRef.current = null;
+    }
+
+    if (!globe || !activeKingFilter) return;
+
+    const projectionSignals = anomalies
+      .filter((item) => item.predictedKing === activeKingFilter)
+      .sort((a, b) => (b.probability ?? 0) - (a.probability ?? 0));
+    if (!projectionSignals.length) return;
+
+    kingProjectionRef.current = createKingEvidenceProjection(projectionSignals, activeKingFilter);
+    globe.mainContainer?.add(kingProjectionRef.current as any);
+
+    if (!selectedCode) {
+      targetRotationYRef.current = getFocusedGlobeRotationY(projectionSignals[0].lon);
+      focusHoldUntilRef.current = 0;
+    }
+  }, [activeKingFilter, anomalies, selectedCode]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -4919,6 +5205,10 @@ function GlobeStreamEarth({
           if (coreMaterial) coreMaterial.opacity = 0.9 + pulse * 0.1;
           pinMaterial?.color.setScalar(1);
         }
+        if (kingProjectionRef.current) {
+          const projectionPulse = 0.9 + ((Math.sin(performance.now() * 0.0032) + 1) / 2) * 0.16;
+          kingProjectionRef.current.children.forEach((point) => point.scale.setScalar(projectionPulse));
+        }
         if (globe.mainContainer && !draggingRef.current && !globe.controls?.isDragging) {
           const targetRotationY = targetRotationYRef.current;
           if (targetRotationY !== null) {
@@ -4993,6 +5283,7 @@ function GlobeStreamEarth({
       globeControlsRef.current = null;
       globeChartRef.current = null;
       selectedGlowRef.current = null;
+      kingProjectionRef.current = null;
       chart?.destroy?.();
       if (container) container.innerHTML = "";
     };
