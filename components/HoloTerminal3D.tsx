@@ -3561,6 +3561,25 @@ function OceanWaterArchive({ onClose }: { onClose: () => void }) {
   );
 }
 
+const missionRecordMeta: Record<string, { code: string; king: string; evidence: number; reviewed: string; channel: string }> = {
+  "夔门计划": { code: "ED-2026-378", king: "青铜与火之王", evidence: 5, reviewed: "已归档", channel: "MONIACH / 水下行动" },
+  "北京尼伯龙根事件": { code: "BJ-METRO-07", king: "大地与山之王", evidence: 4, reviewed: "旁路监听", channel: "CITY NODE / 地铁异常" },
+  "日本收容": { code: "JP-REDWELL-11", king: "白王", evidence: 8, reviewed: "地区封存", channel: "TOKYO / 红井链路" },
+  "格陵兰冰海记": { code: "GL-ICE-03", king: "未知龙类遗留", evidence: 4, reviewed: "历史事故", channel: "POLAR / 冰海残骸" },
+  "卡塞尔学院入侵事": { code: "CSL-GATE-02", king: "校内异常", evidence: 6, reviewed: "校内战情", channel: "CASSELL / 门禁警报" },
+  "青铜计划 / 二次作战": { code: "BRZ-SECOND-09", king: "青铜与火之王", evidence: 7, reviewed: "处决复盘", channel: "MONIACH / 火控链" }
+};
+
+function getMissionMeta(record: ArchiveRecord) {
+  return missionRecordMeta[record.title] ?? {
+    code: record.level,
+    king: "未判定",
+    evidence: 0,
+    reviewed: record.status,
+    channel: "EXECUTIVE / ARCHIVE"
+  };
+}
+
 function MissionOperationsPanel({
   module,
   onSelectRecord,
@@ -3576,62 +3595,159 @@ function MissionOperationsPanel({
 }) {
   const blueprint = archiveBlueprints.missions;
   const records = blueprint?.records ?? [];
+  const [selectedMissionTitle, setSelectedMissionTitle] = useState(records[0]?.title ?? "");
+  const selectedMission = records.find((record) => record.title === selectedMissionTitle) ?? records[0] ?? null;
+  const clearance = profile?.clearance ?? 1;
+  const readableCount = records.filter((record) => clearance >= getRequiredClearance("missions", record)).length;
+  const sealedCount = records.length - readableCount;
+  const monitorCount = records.filter((record) => getMissionMeta(record).reviewed.includes("监听")).length;
+  const latestAccess = profile?.accessLogs?.[0];
+  const selectedMeta = selectedMission ? getMissionMeta(selectedMission) : null;
+  const selectedRequiredClearance = selectedMission ? getRequiredClearance("missions", selectedMission) : 1;
+  const selectedLocked = Boolean(selectedMission?.deepView && clearance < selectedRequiredClearance);
 
   return (
     <section className="mission-ops-panel" style={{ "--holo-color": module.color } as CSSProperties} aria-label={module.title}>
       <div className="mission-ops-header">
         <span>EXECUTIVE DEPARTMENT / OPERATIONS DESK</span>
-        <h1>执行部任务作战台</h1>
-        <p>任务队列只显示行动代号、风险等级、最终状态和诺玛封存标记。点击已解封任务进入作战复盘</p>
+        <h1>执行部行动档案室</h1>
+        <p>该区域只开放行动摘要、权限状态与复盘入口。专员读取完整行动档案前，NORMA 会先记录访问意图。</p>
       </div>
-      <div className="mission-ops-grid">
-        {records.map((record, index) => {
-          const requiredClearance = getRequiredClearance("missions", record);
-          const locked = Boolean(record.deepView && (profile?.clearance ?? 1) < requiredClearance);
 
-          return (
-            <button
-              key={record.title}
-              type="button"
-              className={`mission-card${record.deepView && !locked ? " has-deep-view" : ""}${locked ? " is-locked" : ""}`}
-              onClick={() => {
-                if (record.deepView) {
-                  if (locked) {
+      <div className="mission-ops-status" aria-label="执行部状态">
+        <article>
+          <span>当前权限</span>
+          <strong>C-{clearance}</strong>
+        </article>
+        <article>
+          <span>可读行动</span>
+          <strong>{readableCount}</strong>
+        </article>
+        <article>
+          <span>封存行动</span>
+          <strong>{sealedCount}</strong>
+        </article>
+        <article>
+          <span>旁路监听</span>
+          <strong>{monitorCount}</strong>
+        </article>
+      </div>
+
+      <div className="mission-ops-layout">
+        <div className="mission-ops-grid">
+          {records.map((record, index) => {
+            const requiredClearance = getRequiredClearance("missions", record);
+            const locked = Boolean(record.deepView && clearance < requiredClearance);
+            const meta = getMissionMeta(record);
+            const active = selectedMission?.title === record.title;
+
+            return (
+              <button
+                key={record.title}
+                type="button"
+                className={`mission-card${record.deepView && !locked ? " has-deep-view" : ""}${locked ? " is-locked" : ""}${active ? " is-active" : ""}`}
+                onClick={() => {
+                  setSelectedMissionTitle(record.title);
+                  onSelectRecord(
+                    locked
+                      ? {
+                          ...record,
+                          status: `SEALED / CLEARANCE ${requiredClearance} REQUIRED`,
+                          detail: `NORMA 拒绝访问。该行动复盘需 CLEARANCE ${requiredClearance}，当前专员权限不足。`
+                        }
+                      : record
+                  );
+                }}
+              >
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <header>
+                  <strong>{meta.code}</strong>
+                  <em>{locked ? `需要 C-${requiredClearance}` : record.status}</em>
+                </header>
+                <h2>{record.title}</h2>
+                <div className="mission-card-meta">
+                  <em>{record.level}</em>
+                  <em>{meta.king}</em>
+                  <em>{meta.evidence} 证据</em>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <aside className={`mission-summary-panel${selectedLocked ? " is-locked" : ""}`} aria-label="行动摘要">
+          {selectedMission && selectedMeta ? (
+            <>
+              <header>
+                <span>NORMA OPERATION SUMMARY</span>
+                <strong>{selectedLocked ? `需要 C-${selectedRequiredClearance} 权限` : "摘要开放"}</strong>
+              </header>
+              <h2>{selectedMission.title}</h2>
+              <p>{selectedMission.detail}</p>
+              <div className="mission-summary-grid">
+                <div>
+                  <span>行动编号</span>
+                  <strong>{selectedMeta.code}</strong>
+                </div>
+                <div>
+                  <span>风险级别</span>
+                  <strong>{selectedMission.level}</strong>
+                </div>
+                <div>
+                  <span>关联索引</span>
+                  <strong>{selectedMeta.king}</strong>
+                </div>
+                <div>
+                  <span>证据数量</span>
+                  <strong>{selectedMeta.evidence}</strong>
+                </div>
+                <div>
+                  <span>链路</span>
+                  <strong>{selectedMeta.channel}</strong>
+                </div>
+                <div>
+                  <span>状态</span>
+                  <strong>{selectedMeta.reviewed}</strong>
+                </div>
+              </div>
+              <div className="mission-summary-log">
+                <span>NORMA 访问记录</span>
+                <p>
+                  {latestAccess
+                    ? `${latestAccess.action} / ${latestAccess.result} / ${new Date(latestAccess.at).toLocaleString("zh-CN")}`
+                    : "当前会话暂无执行部访问记录。"}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={!selectedMission.deepView || selectedLocked}
+                onClick={() => {
+                  if (!selectedMission.deepView) return;
+                  if (selectedLocked) {
                     onAccessLog?.({
                       action: "DENIED_ACCESS",
-                      target: `${record.level} / ${record.title}`,
+                      target: `${selectedMission.level} / ${selectedMission.title}`,
                       result: "DENIED",
-                      detail: `CLEARANCE ${requiredClearance} REQUIRED`
-                    });
-                    onSelectRecord({
-                      ...record,
-                      status: `SEALED / CLEARANCE ${requiredClearance} REQUIRED`,
-                      detail: `NORMA 拒绝访问。该行动复盘需CLEARANCE ${requiredClearance}，当前专员权限不足。`
+                      detail: `CLEARANCE ${selectedRequiredClearance} REQUIRED`
                     });
                     return;
                   }
                   onAccessLog?.({
                     action: "ARCHIVE_ACCESS",
-                    target: `${record.level} / ${record.title}`,
+                    target: `${selectedMission.level} / ${selectedMission.title}`,
                     result: "ALLOWED",
-                    detail: `CLEARANCE ${profile?.clearance ?? 1} VERIFIED`
+                    detail: `CLEARANCE ${clearance} VERIFIED`
                   });
-                  onOpenDeepArchive(record.deepView, record);
-                  return;
-                }
-                onSelectRecord(record);
-              }}
-            >
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <header>
-                <strong>{record.level}</strong>
-                <em>{locked ? `SEALED / C-${requiredClearance}` : record.status}</em>
-              </header>
-              <h2>{record.title}</h2>
-            </button>
-          );
-        })}
+                  onOpenDeepArchive(selectedMission.deepView, selectedMission);
+                }}
+              >
+                {selectedLocked ? "完整复盘受限" : "进入完整行动复盘"}
+              </button>
+            </>
+          ) : null}
+        </aside>
       </div>
+
       <div className="mission-ops-footer">
         {(blueprint?.workflow ?? module.lines).map((item) => (
           <span key={item}>{item}</span>
@@ -5710,6 +5826,1349 @@ function FieldEvidenceLibraryPanel({
     </section>
   );
 }
+
+type AlchemyCategoryId = "speech" | "runes" | "weapons" | "artifacts" | "fields";
+
+type AlchemyRecord = {
+  id: string;
+  category: AlchemyCategoryId;
+  code: string;
+  title: string;
+  type: string;
+  clearance: AgentProfile["clearance"];
+  status: string;
+  king: string;
+  source: string;
+  containment: string;
+  summary: string;
+  details: string[];
+  linked: string[];
+  risk: string;
+};
+
+const alchemyCategories: Array<{ id: AlchemyCategoryId; label: string; note: string }> = [
+  { id: "speech", label: "言灵序列", note: "龙文释放 / 血统响应" },
+  { id: "runes", label: "龙文解析", note: "残缺译文 / 权限遮蔽" },
+  { id: "weapons", label: "炼金武器", note: "冰窖封存 / 双钥授权" },
+  { id: "artifacts", label: "炼金器物", note: "物证柜 / 王座残留" },
+  { id: "fields", label: "炼金领域", note: "空间结构 / 活灵机关" }
+];
+
+const alchemyRecords: AlchemyRecord[] = [
+  {
+    id: "alc-speech-emperor",
+    category: "speech",
+    code: "LING-PRIME-00",
+    title: "言灵·皇帝",
+    type: "最高序列言灵",
+    clearance: 3,
+    status: "精神压制协议",
+    king: "黑王",
+    source: "3E 反应记录 / 龙皇召唤",
+    containment: "仅开放索引。完整声纹与诱发流程封存。",
+    summary: "用于判定混血种对龙皇谱系的敬畏、服从和血统共鸣。异常无响应个体必须单独建档。",
+    details: ["不展示咒文原句，只显示反应模型。", "与 3E 考试、龙文共鸣和血统评级互相校验。", "可作为黑王谱系权限压制的最高风险参照。"],
+    linked: ["PRIME-00", "3E 考试", "异常无响应"],
+    risk: "误判会直接影响招生、隔离和高危个体处置。"
+  },
+  {
+    id: "alc-speech-oracle",
+    category: "speech",
+    code: "LING-PRIME-01",
+    title: "言灵·神谕",
+    type: "最高序列言灵",
+    clearance: 3,
+    status: "白王侧反叛协议",
+    king: "白王",
+    source: "白王血裔 / 神谕样本",
+    containment: "校长室同步封存。禁止并入普通精神抗性记录。",
+    summary: "神谕不是普通攻击型言灵，而是解除黑王谱系服从结构的禁忌标志。",
+    details: ["与言灵·皇帝形成对照。", "出现神谕级反应时需进入白王侧复核。", "完整判读字段保持遮蔽。"],
+    linked: ["PRIME-01", "白王血裔", "日本收容链"],
+    risk: "若误判，学院可能把白王侧高危个体留在常规学生系统内。"
+  },
+  {
+    id: "alc-speech-snake",
+    category: "speech",
+    code: "LING-SENSOR-07",
+    title: "言灵·蛇",
+    type: "感知型言灵",
+    clearance: 2,
+    status: "水下感知协议",
+    king: "青铜与火之王",
+    source: "夔门计划 / 叶胜行动记录",
+    containment: "可读摘要。释放范围与活体密钥参数受限。",
+    summary: "言灵·蛇在水体和金属环境中扩大侦测半径，是青铜城接触行动的关键感知协议。",
+    details: ["与水下通讯、龙文回传、活体密钥形成同一条行动链。", "适合在界面中表现为声波网和金属导电路径。", "仅记录任务用途，不开放训练流程。"],
+    linked: ["夔门计划", "叶胜", "青铜城"],
+    risk: "在炼金机关内部释放时可能触发非预期反馈。"
+  },
+  {
+    id: "alc-speech-kama",
+    category: "speech",
+    code: "LING-WIND-12",
+    title: "言灵·镰鼬",
+    type: "风域侦测言灵",
+    clearance: 2,
+    status: "战场听觉建图",
+    king: "天空与风之王",
+    source: "恺撒样本 / 风系档案",
+    containment: "可读摘要。异变攻击样本需复核。",
+    summary: "释放者命令风捕捉声音，把心跳、脚步和刀刃都转为可追踪信号。",
+    details: ["该记录属于风权柄低阶投影，不能直接等同 KING-02 本体。", "可与尼伯龙根风域、镰鼬群体样本互链。", "攻击型异变样本单独封存。"],
+    linked: ["恺撒", "北京尼伯龙根", "风系言灵"],
+    risk: "侦测型、切割型和王座级风权柄必须严格区分。"
+  },
+  {
+    id: "alc-speech-junyan",
+    category: "speech",
+    code: "LING-FIRE-21",
+    title: "言灵·君焰",
+    type: "高危火系言灵",
+    clearance: 2,
+    status: "热源异常样本",
+    king: "青铜与火之王",
+    source: "火系言灵参照",
+    containment: "开放基础摘要。热源阈值与战术应用锁定。",
+    summary: "火系言灵被 NORMA 归入青铜与火权柄参照，用于判断热源波动和金属响应是否进入王座级风险。",
+    details: ["界面可表现为声节点点亮与热波纹。", "只作为权柄参照，不作为龙王出现的直接证据。", "与火控记录、炼金武器链存在交叉。"],
+    linked: ["KING-01", "火控记录", "青铜计划"],
+    risk: "高温样本与龙王级火权柄容易被混淆。"
+  },
+  {
+    id: "alc-rune-bronze-tablet",
+    category: "runes",
+    code: "RUNE-BRZ-001",
+    title: "青铜城龙文碑记",
+    type: "残缺译文",
+    clearance: 2,
+    status: "解析中",
+    king: "青铜与火之王",
+    source: "夔门计划 / 水下影像",
+    containment: "关键字段遮蔽。完整译文需执行部授权。",
+    summary: "青铜城内部龙文可能记录铸城逻辑、机关结构和诺顿权柄，是炼金库的关键文本层。",
+    details: ["龙文不是装饰符号，更像说明书、警告和权限协议。", "残缺译文可随权限提升逐步补全。", "与活灵、门禁和城内变形机制互链。"],
+    linked: ["龙文穹顶", "青铜城", "活灵机关"],
+    risk: "误读龙文可能触发遗迹系统响应。"
+  },
+  {
+    id: "alc-weapon-seven-sins",
+    category: "weapons",
+    code: "ARS-S20100144",
+    title: "炼金刀剑·七宗罪",
+    type: "冰窖顶级藏品",
+    clearance: 3,
+    status: "双钥授权",
+    king: "青铜与火之王",
+    source: "冰窖藏品 / 金属匣链路",
+    containment: "开放总览。单柄参数、适配目标和铸造细节封存。",
+    summary: "七宗罪不是普通武器组，而是连接青铜与火之王、炼金资料库和王座处决逻辑的核心桥梁。",
+    details: ["七柄武器对应不同命名和处决意志。", "武器调动必须同步炼金库、执行部和 KING-01 档案。", "MVP 仅显示总柜，不展开单柄剖面。"],
+    linked: ["诺顿", "青铜计划", "冰窖"],
+    risk: "错误使用可能反向激活王座遗留机制。"
+  },
+  {
+    id: "alc-weapon-frigga",
+    category: "weapons",
+    code: "ARS-FRG-009",
+    title: "弗里嘉子弹",
+    type: "非致命炼金弹头",
+    clearance: 1,
+    status: "训练场许可",
+    king: "学院装备部",
+    source: "自由一日 / 装备部记录",
+    containment: "低危摘要开放。药剂配比不上屏。",
+    summary: "学院训练和校内冲突中常见的炼金装备，用于让中弹者迅速昏迷，避免真实伤亡。",
+    details: ["它能让炼金库从王座级物证落到学院日常。", "与冰窖禁令、校规和装备部授权相关。", "具体弹头配方不进入终端。"],
+    linked: ["自由一日", "装备部", "校规"],
+    risk: "低危不等于无风险，重复作用可能造成二次医疗问题。"
+  },
+  {
+    id: "alc-artifact-brass-jar",
+    category: "artifacts",
+    code: "OBJ-BRZ-027",
+    title: "黄铜罐",
+    type: "复苏容器",
+    clearance: 2,
+    status: "物证柜封存",
+    king: "青铜与火之王",
+    source: "夔门计划 / 水下转移",
+    containment: "摘要开放。内部结构和生物残留字段遮蔽。",
+    summary: "黄铜罐被归入骨殖瓶或卵的范畴，不是普通容器，而是龙王沉睡与保存信息的炼金载体。",
+    details: ["应与诺顿之卵、金属匣和七宗罪链路一起读取。", "封存标签必须标明王座复苏风险。", "不进入普通证据库。"],
+    linked: ["诺顿之卵", "夔门计划", "复苏物证"],
+    risk: "普通打捞物处理会低估复苏链危险。"
+  },
+  {
+    id: "alc-artifact-metal-case",
+    category: "artifacts",
+    code: "OBJ-BRZ-031",
+    title: "金属匣",
+    type: "武器承载物证",
+    clearance: 3,
+    status: "冰窖封存",
+    king: "青铜与火之王",
+    source: "青铜与火王座链",
+    containment: "仅显示索引。完整开启记录需 C-3。",
+    summary: "金属匣将夔门计划从遗迹侦察推入炼金武器、王座处决和二次作战链路。",
+    details: ["与七宗罪武器组互锁。", "开启、转运、授权均需留下 NORMA 记录。", "匣体不是包装，而是炼金物证的一部分。"],
+    linked: ["七宗罪", "青铜计划", "冰窖"],
+    risk: "解除封存可能暴露武器适配信息。"
+  },
+  {
+    id: "alc-field-bronze-city",
+    category: "fields",
+    code: "FIELD-BRZ-001",
+    title: "青铜城炼金机关",
+    type: "王座级结构",
+    clearance: 2,
+    status: "结构响应已确认",
+    king: "青铜与火之王",
+    source: "夔门计划 / 结构扫描",
+    containment: "开放行动摘要。机关逻辑图受限。",
+    summary: "青铜城不是普通遗迹，墙壁、门禁、甬道、齿轮和龙文穹顶属于同一套炼金机关。",
+    details: ["系统可从静态遗迹转为机械迷宫。", "路径封死、新路生成和通讯断裂都应被视为主动响应。", "适合后续做成可旋转结构剖面。"],
+    linked: ["青铜城", "活体密钥", "龙文碑记"],
+    risk: "进入者容易把建筑结构误判为无生命环境。"
+  },
+  {
+    id: "alc-field-mercury",
+    category: "fields",
+    code: "FIELD-HG-221",
+    title: "水银周流领域",
+    type: "大型炼金领域",
+    clearance: 3,
+    status: "历史高危参照",
+    king: "未知 / 初代种级",
+    source: "秦始皇陵相关炼金记录",
+    containment: "历史摘要开放。领域破坏条件封存。",
+    summary: "水银周流不是传说装饰，而是大型炼金领域的驱动结构，可作为空间级炼金术参照。",
+    details: ["用于说明炼金术不只是武器，也可以是场、空间和循环系统。", "完整破坏条件不在 C-2 权限显示。", "与尼伯龙根空间理解互为参照。"],
+    linked: ["水银", "炼金领域", "空间结构"],
+    risk: "大型领域记录若公开，可能引发错误复现。"
+  }
+];
+
+const lingMetrics: Record<string, { signature: number; bloodline: string; field: string; throne: string; threshold: string; vector: string }> = {
+  "alc-speech-emperor": {
+    signature: 96,
+    bloodline: "龙皇谱系强制响应",
+    field: "精神领域 / 高压",
+    throne: "PRIME-00 / 最高",
+    threshold: "不可现场复现",
+    vector: "龙文声纹 / 服从冲动"
+  },
+  "alc-speech-oracle": {
+    signature: 93,
+    bloodline: "白王侧免疫结构",
+    field: "反叛协议 / 极高",
+    throne: "PRIME-01 / 最高",
+    threshold: "校长室复核",
+    vector: "神谕回声 / 归属重写"
+  },
+  "alc-speech-snake": {
+    signature: 78,
+    bloodline: "A 级可承载",
+    field: "水体金属 / 稳定",
+    throne: "KING-01 / 行动样本",
+    threshold: "机关区慎用",
+    vector: "感知网络 / 导电扩散"
+  },
+  "alc-speech-kama": {
+    signature: 72,
+    bloodline: "A 级可承载",
+    field: "空气声波 / 高",
+    throne: "KING-02 / 低阶投影",
+    threshold: "群体化升阶",
+    vector: "听觉建图 / 风域侦测"
+  },
+  "alc-speech-junyan": {
+    signature: 81,
+    bloodline: "高危火系承载",
+    field: "热源释放 / 中高",
+    throne: "KING-01 / 权柄参照",
+    threshold: "热源失控",
+    vector: "火焰波纹 / 金属响应"
+  }
+};
+
+type LingMatrixCell = {
+  id: string;
+  code: string;
+  title: string;
+  axis: string;
+  tier: string;
+  clearance: AgentProfile["clearance"];
+  recordId?: string;
+  note: string;
+  ability?: string;
+  evidence?: string;
+  x: number;
+  y: number;
+  span?: number;
+};
+
+const lingMatrixCells: LingMatrixCell[] = [
+  { id: "emperor", code: "PR-00", title: "皇帝", axis: "精神", tier: "PRIME", clearance: 3, recordId: "alc-speech-emperor", note: "龙皇召唤", x: 1, y: 1, span: 2 },
+  { id: "oracle", code: "PR-01", title: "神谕", axis: "精神", tier: "PRIME", clearance: 3, recordId: "alc-speech-oracle", note: "白王反叛", x: 3, y: 1, span: 2 },
+  { id: "commandment", code: "PR-02", title: "戒律", axis: "精神", tier: "PRIME", clearance: 4, note: "校长室封存", x: 5, y: 1, span: 2 },
+  { id: "royal-eye", code: "SP-01", title: "王权", axis: "精神", tier: "王座级", clearance: 4, note: "威压场", x: 7, y: 1 },
+  { id: "snake", code: "SN-07", title: "蛇", axis: "感知", tier: "侦测", clearance: 2, recordId: "alc-speech-snake", note: "水体金属", x: 1, y: 2 },
+  { id: "kama", code: "WD-12", title: "镰鼬", axis: "风", tier: "侦测", clearance: 2, recordId: "alc-speech-kama", note: "风域听觉", x: 2, y: 2 },
+  { id: "yin-current", code: "WD-13", title: "阴流", axis: "风", tier: "战术", clearance: 2, note: "风域遮蔽", x: 3, y: 2 },
+  { id: "wind-eye", code: "WD-21", title: "风王之瞳", axis: "风", tier: "高危", clearance: 3, note: "风压撕扯", x: 4, y: 2 },
+  { id: "junyan", code: "FR-21", title: "君焰", axis: "火", tier: "高危", clearance: 2, recordId: "alc-speech-junyan", note: "热源释放", x: 5, y: 2 },
+  { id: "black-sun", code: "FR-31", title: "黑日", axis: "火", tier: "禁忌", clearance: 4, note: "完整遮蔽", x: 6, y: 2 },
+  { id: "bronze-throne", code: "MT-19", title: "青铜御座", axis: "金属", tier: "王座级", clearance: 3, note: "炼金结构", x: 7, y: 2 },
+  { id: "earthquake", code: "ER-24", title: "大地脉动", axis: "地", tier: "高危", clearance: 3, note: "地质响应", x: 1, y: 3 },
+  { id: "abyss", code: "WT-18", title: "深渊", axis: "水", tier: "高危", clearance: 3, note: "水域权柄", x: 2, y: 3 },
+  { id: "bloodline", code: "LF-08", title: "血系结罗", axis: "生命", tier: "战术", clearance: 3, note: "血统追索", x: 3, y: 3 },
+  { id: "time-zero", code: "TM-00", title: "时间零", axis: "空间", tier: "高危", clearance: 3, note: "时间感知", x: 4, y: 3 },
+  { id: "dream", code: "SP-33", title: "梦貘", axis: "精神", tier: "战术", clearance: 2, note: "精神入侵", x: 5, y: 3 },
+  { id: "sickle-blood", code: "WD-X", title: "吸血镰", axis: "风", tier: "异变", clearance: 3, note: "样本封存", x: 6, y: 3 },
+  { id: "unknown", code: "??-76", title: "未破译", axis: "龙文", tier: "未定", clearance: 4, note: "76句残卷", x: 7, y: 3 }
+];
+
+const lingPeriodicCells: LingMatrixCell[] = [
+  { id: "ling-001", code: "001", title: "皇帝", axis: "精神", tier: "000-020 / 精神与血统", clearance: 3, recordId: "alc-speech-emperor", note: "龙皇召唤", x: 1, y: 1 },
+  { id: "ling-002", code: "002", title: "神谕", axis: "精神", tier: "000-020 / 精神与血统", clearance: 3, recordId: "alc-speech-oracle", note: "白王反叛", x: 2, y: 1 },
+  { id: "ling-003", code: "003", title: "戒律", axis: "精神", tier: "000-020 / 精神与血统", clearance: 4, note: "校长室封存", x: 3, y: 1 },
+  { id: "ling-004", code: "004", title: "梦貘", axis: "精神", tier: "000-020 / 精神与血统", clearance: 2, note: "精神入侵", x: 4, y: 1 },
+  { id: "ling-005", code: "005", title: "血系结罗", axis: "生命", tier: "000-020 / 精神与血统", clearance: 3, note: "血统追索", x: 5, y: 1 },
+  { id: "ling-006", code: "006", title: "王权", axis: "精神", tier: "000-020 / 精神与血统", clearance: 4, note: "威压场", x: 6, y: 1 },
+  { id: "ling-007", code: "007", title: "圣裁", axis: "精神", tier: "000-020 / 精神与血统", clearance: 4, note: "未解封", x: 7, y: 1 },
+  { id: "ling-008", code: "008", title: "未知", axis: "血统", tier: "000-020 / 精神与血统", clearance: 4, note: "残卷空位", x: 8, y: 1 },
+  { id: "ling-021", code: "021", title: "君焰", axis: "火", tier: "021-040 / 元素释放", clearance: 2, recordId: "alc-speech-junyan", note: "热源释放", x: 1, y: 2 },
+  { id: "ling-022", code: "022", title: "黑日", axis: "火", tier: "021-040 / 元素释放", clearance: 4, note: "完整遮蔽", x: 2, y: 2 },
+  { id: "ling-023", code: "023", title: "炽", axis: "火", tier: "021-040 / 元素释放", clearance: 3, note: "火系残卷", x: 3, y: 2 },
+  { id: "ling-024", code: "024", title: "烛龙", axis: "火", tier: "021-040 / 元素释放", clearance: 4, note: "王座级封存", x: 4, y: 2 },
+  { id: "ling-025", code: "025", title: "深渊", axis: "水", tier: "021-040 / 元素释放", clearance: 3, note: "水域权柄", x: 5, y: 2 },
+  { id: "ling-026", code: "026", title: "大地脉动", axis: "地", tier: "021-040 / 元素释放", clearance: 3, note: "地质响应", x: 6, y: 2 },
+  { id: "ling-027", code: "027", title: "青铜御座", axis: "金属", tier: "021-040 / 元素释放", clearance: 3, note: "炼金结构", x: 7, y: 2 },
+  { id: "ling-028", code: "028", title: "未知", axis: "元素", tier: "021-040 / 元素释放", clearance: 4, note: "残卷空位", x: 8, y: 2 },
+  { id: "ling-041", code: "041", title: "蛇", axis: "感知", tier: "041-060 / 感知与领域", clearance: 2, recordId: "alc-speech-snake", note: "水体金属", x: 1, y: 3 },
+  { id: "ling-042", code: "042", title: "镰鼬", axis: "风", tier: "041-060 / 感知与领域", clearance: 2, recordId: "alc-speech-kama", note: "风域听觉", x: 2, y: 3 },
+  { id: "ling-043", code: "043", title: "阴流", axis: "风", tier: "041-060 / 感知与领域", clearance: 2, note: "风域遮蔽", x: 3, y: 3 },
+  { id: "ling-044", code: "044", title: "风王之瞳", axis: "风", tier: "041-060 / 感知与领域", clearance: 3, note: "风压撕扯", x: 4, y: 3 },
+  { id: "ling-045", code: "045", title: "吸血镰", axis: "风", tier: "041-060 / 感知与领域", clearance: 3, note: "异变样本", x: 5, y: 3 },
+  { id: "ling-046", code: "046", title: "无尘之地", axis: "领域", tier: "041-060 / 感知与领域", clearance: 3, note: "防御领域", x: 6, y: 3 },
+  { id: "ling-047", code: "047", title: "未知", axis: "感知", tier: "041-060 / 感知与领域", clearance: 4, note: "残卷空位", x: 7, y: 3 },
+  { id: "ling-048", code: "048", title: "未知", axis: "领域", tier: "041-060 / 感知与领域", clearance: 4, note: "残卷空位", x: 8, y: 3 },
+  { id: "ling-061", code: "061", title: "时间零", axis: "空间", tier: "061-080 / 空间与规则", clearance: 3, note: "时间感知", x: 1, y: 4 },
+  { id: "ling-062", code: "062", title: "刹那", axis: "空间", tier: "061-080 / 空间与规则", clearance: 3, note: "高速序列", x: 2, y: 4 },
+  { id: "ling-063", code: "063", title: "钥匙", axis: "规则", tier: "061-080 / 空间与规则", clearance: 3, note: "门禁协议", x: 3, y: 4 },
+  { id: "ling-064", code: "064", title: "活灵", axis: "规则", tier: "061-080 / 空间与规则", clearance: 3, note: "炼金机关", x: 4, y: 4 },
+  { id: "ling-065", code: "065", title: "镜瞳", axis: "规则", tier: "061-080 / 空间与规则", clearance: 4, note: "封存索引", x: 5, y: 4 },
+  { id: "ling-066", code: "066", title: "未知", axis: "空间", tier: "061-080 / 空间与规则", clearance: 4, note: "残卷空位", x: 6, y: 4 },
+  { id: "ling-067", code: "067", title: "未知", axis: "规则", tier: "061-080 / 空间与规则", clearance: 4, note: "残卷空位", x: 7, y: 4 },
+  { id: "ling-068", code: "068", title: "未知", axis: "规则", tier: "061-080 / 空间与规则", clearance: 4, note: "残卷空位", x: 8, y: 4 },
+  { id: "ling-081", code: "081", title: "黑王残响", axis: "禁忌", tier: "081+ / 禁忌与未确认", clearance: 4, note: "PRIME 封条", x: 1, y: 5 },
+  { id: "ling-082", code: "082", title: "白王残响", axis: "禁忌", tier: "081+ / 禁忌与未确认", clearance: 4, note: "PRIME 封条", x: 2, y: 5 },
+  { id: "ling-083", code: "083", title: "尼伯龙根", axis: "禁忌", tier: "081+ / 禁忌与未确认", clearance: 4, note: "空间污染", x: 3, y: 5 },
+  { id: "ling-084", code: "084", title: "龙文残句", axis: "龙文", tier: "081+ / 禁忌与未确认", clearance: 4, note: "76句残卷", x: 4, y: 5 },
+  { id: "ling-085", code: "085", title: "未破译", axis: "龙文", tier: "081+ / 禁忌与未确认", clearance: 4, note: "残卷空位", x: 5, y: 5 },
+  { id: "ling-086", code: "086", title: "未破译", axis: "龙文", tier: "081+ / 禁忌与未确认", clearance: 4, note: "残卷空位", x: 6, y: 5 },
+  { id: "ling-087", code: "087", title: "未破译", axis: "龙文", tier: "081+ / 禁忌与未确认", clearance: 4, note: "残卷空位", x: 7, y: 5 },
+  { id: "ling-088", code: "088", title: "未破译", axis: "龙文", tier: "081+ / 禁忌与未确认", clearance: 4, note: "残卷空位", x: 8, y: 5 }
+];
+
+const lingSequenceCells: LingMatrixCell[] = [
+  {
+    id: "seq-028-chiri",
+    code: "028",
+    title: "炽日",
+    axis: "已确认",
+    tier: "低序列",
+    clearance: 2,
+    note: "雷蒙德 / 4000 流明烈光",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-028-attendant",
+    code: "028",
+    title: "王之侍",
+    axis: "已确认",
+    tier: "低序列",
+    clearance: 3,
+    note: "未命名混血种 / 保安公司事件",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-059-kama",
+    code: "059",
+    title: "镰鼬",
+    axis: "已确认",
+    tier: "稳定序列",
+    clearance: 2,
+    recordId: "alc-speech-kama",
+    note: "恺撒 / 风域听觉",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-074-wind-eye",
+    code: "074",
+    title: "风王之瞳",
+    axis: "已确认",
+    tier: "稳定序列",
+    clearance: 3,
+    note: "夏弥 / 操纵空气流",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-089-junyan",
+    code: "089",
+    title: "君焰",
+    axis: "危险",
+    tier: "危险序列",
+    clearance: 2,
+    recordId: "alc-speech-junyan",
+    note: "楚子航 / 高热爆燃",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-091-royal",
+    code: "091",
+    title: "王权",
+    axis: "危险",
+    tier: "危险序列",
+    clearance: 4,
+    note: "重力领域 / 高阶威压",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-113-rhein",
+    code: "113",
+    title: "莱茵",
+    axis: "绝密",
+    tier: "绝密序列",
+    clearance: 4,
+    note: "通古斯记录 / 核爆级",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-114-candle",
+    code: "114",
+    title: "烛龙",
+    axis: "绝密",
+    tier: "绝密序列",
+    clearance: 4,
+    note: "火系终极 / 效果未知",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-emperor",
+    code: "???",
+    title: "皇帝",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 3,
+    recordId: "alc-speech-emperor",
+    note: "黑王最高言灵 / 序号未公开",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-oracle",
+    code: "???",
+    title: "神谕",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 3,
+    recordId: "alc-speech-oracle",
+    note: "白王血裔 / 克制皇帝",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-snake",
+    code: "???",
+    title: "蛇",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 2,
+    recordId: "alc-speech-snake",
+    note: "叶胜、曼施坦因 / 言灵·蛇",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-commandment",
+    code: "???",
+    title: "戒律",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 4,
+    note: "守夜人 / 领域压制",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-dustless",
+    code: "???",
+    title: "无尘之地",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 3,
+    note: "曼斯 / 排斥领域",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-lightless",
+    code: "???",
+    title: "冥照",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 3,
+    note: "隐蔽领域 / 原文索引",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-eternal",
+    code: "???",
+    title: "永恒",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 4,
+    note: "高权限索引 / 序号未公开",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-throne",
+    code: "???",
+    title: "青铜御座",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 3,
+    note: "炼金结构强化",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-sickle-blood",
+    code: "???",
+    title: "吸血镰",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 3,
+    note: "风属性异变样本",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-dream",
+    code: "???",
+    title: "梦貘",
+    axis: "原文出现",
+    tier: "白王系空缺",
+    clearance: 2,
+    note: "周期表空缺 / 名称与效果待检验",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-judgement",
+    code: "???",
+    title: "审判",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 4,
+    note: "高危言灵 / 序号未公开",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-shiva",
+    code: "???",
+    title: "湿婆业舞",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 4,
+    note: "毁灭性记录 / 序号未公开",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-time-zero",
+    code: "???",
+    title: "时零",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 3,
+    note: "时间感知异常 / 序号未公开",
+    x: 0,
+    y: 0
+  },
+  {
+    id: "seq-pending-prophet",
+    code: "???",
+    title: "先知",
+    axis: "原文出现",
+    tier: "序列待校验",
+    clearance: 3,
+    note: "预知类索引 / 序号未公开",
+    x: 0,
+    y: 0
+  }
+];
+
+const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | "code" | "x" | "y">> = {
+  18: {
+    title: "蛇",
+    axis: "校勘录入",
+    tier: "感知序列",
+    clearance: 2,
+    recordId: "alc-speech-snake",
+    note: "叶胜、曼施坦因 / 生物电流侦测",
+    ability: "释放者向“蛇群”下令，以生物电流形式进入水体、金属和缝隙，侦测环境并传递信号。",
+    evidence: "叶胜在青铜城水域释放；曼施坦因确认自己也拥有“蛇”，且领域更大。"
+  },
+  28: {
+    title: "炽日 / 王之侍",
+    axis: "序列冲突",
+    tier: "原文冲突",
+    clearance: 3,
+    note: "同一序列号出现两种言灵名称，需进入冰窖校勘记录。",
+    ability: "炽日制造强烈光领域，迫使有视觉目标失明；王之侍强化领域内活体体能，可把同伴强化为军队。",
+    evidence: "雷蒙德“炽日”和保安公司事件中的“王之侍”均被标为序列号 28，NORMA 标记为序列冲突。"
+  },
+  45: {
+    title: "先知",
+    axis: "校勘录入",
+    tier: "灵视序列",
+    clearance: 2,
+    note: "3E 考试 / 预知性灵视",
+    ability: "触发预知性灵视，使接收者从声音、圣咏或图像残片中捕捉未来预兆并记录。",
+    evidence: "3E 考试场景中，路明非辨认出“言灵·先知”并立即进入绘图式灵视。"
+  },
+  59: {
+    title: "镰鼬",
+    axis: "已确认",
+    tier: "稳定序列",
+    clearance: 2,
+    recordId: "alc-speech-kama",
+    note: "恺撒 / 风域听觉",
+    ability: "驱使领域内的风捕捉声音，将心跳、气流和微弱声响回传给释放者，形成战场听觉地图。",
+    evidence: "恺撒在英灵殿黑暗中以镰鼬完成侦听；原文明确给出序列号 59。"
+  },
+  69: {
+    title: "冥照",
+    axis: "校勘录入",
+    tier: "隐匿序列",
+    clearance: 3,
+    note: "入侵者队长 / 低可见领域",
+    ability: "生成小范围隐匿领域，降低存在感并遮蔽视觉，使多人借黑暗贴身移动。",
+    evidence: "学院入侵者以冥照贴身成组潜行，原文描述其领域约两米半径，并伴随黑色空气痕迹。"
+  },
+  71: {
+    title: "吸血镰",
+    axis: "校勘录入",
+    tier: "风系杀伤",
+    clearance: 3,
+    note: "帕西、恺撒暴血后 / 风刃爆发",
+    ability: "风属性杀伤言灵，形成透明尖锐气流，像无形短矢一样密集散射。",
+    evidence: "吸血镰与无尘之地同时爆发时，原文描写为透明而尖锐的影子，风属性领域发生融合扩张。"
+  },
+  74: {
+    title: "风王之瞳",
+    axis: "已确认",
+    tier: "稳定序列",
+    clearance: 3,
+    note: "夏弥 / 操纵空气流",
+    ability: "以释放者为中心操纵空气流动形成漩涡；控制力足够时可悬浮或短暂浮空移动。",
+    evidence: "原文明确称夏弥依靠风王之瞳，并给出序列号 74。"
+  },
+  81: {
+    title: "无尘之地",
+    axis: "校勘录入",
+    tier: "领域防御",
+    clearance: 3,
+    note: "曼斯、帕西 / 排斥领域",
+    ability: "在释放者周围形成排斥领域，由内向外推动气压或水体，隔离爆炸、碎片、火焰或水压。",
+    evidence: "曼斯在水下与爆炸场景中释放，形成球形屏障/空气壳；帕西记录中也出现同类防御场。"
+  },
+  84: {
+    title: "时零 / 永恒",
+    axis: "校勘录入",
+    tier: "时间序列",
+    clearance: 3,
+    note: "昂热、楚天骄 / 时间延展",
+    ability: "延展释放者所在领域的时间感，使外界运动被大幅放慢；高阶维持会消耗精神和肉体。",
+    evidence: "昂热多次使用时零，楚天骄也被确认拥有同类时间言灵；“永恒”与“时零”的关系暂作校勘合并。"
+  },
+  87: {
+    title: "青铜御座",
+    axis: "推定封存",
+    tier: "炼金强化",
+    clearance: 3,
+    note: "肉体与骨骼强化 / 序列待复核",
+    ability: "强化骨骼、肌肉和皮肤，使身体呈青铜化状态并获得远超常人的力量。",
+    evidence: "原文中释放者骨骼爆响、皮肤泛青铜色，并可抛起重达三吨的石棺。"
+  },
+  89: {
+    title: "君焰",
+    axis: "危险",
+    tier: "危险序列",
+    clearance: 2,
+    recordId: "alc-speech-junyan",
+    note: "楚子航 / 高热爆燃",
+    ability: "压缩并释放火元素与热源，形成高温爆燃、冲击和大范围焚烧。",
+    evidence: "楚子航释放君焰时，原文将其称为青铜与火之王一脉的“君王怒火”。"
+  },
+  91: {
+    title: "王权",
+    axis: "危险",
+    tier: "危险序列",
+    clearance: 4,
+    note: "重力领域 / 高阶威压",
+    ability: "制造重力/威压领域，迫使领域内目标下跪或贴地，严重时可压碎骨骼。",
+    evidence: "原文说明王权领域内无人能直立，目标会承受数十倍至数百倍重量。"
+  },
+  96: {
+    title: "梦貘",
+    axis: "推定封存",
+    tier: "白王系空缺",
+    clearance: 3,
+    note: "风间琉璃（源稚女） / 精神控制",
+    ability: "精神控制类言灵，将目标拖入极真实噩梦；若目标相信自己在梦中死亡，现实意识也会消亡。",
+    evidence: "风间琉璃以梦貘困住源稚生，原文称它看似不具攻击力，却极其凶险。"
+  },
+  106: {
+    title: "戒律",
+    axis: "权柄重排",
+    tier: "高危压制",
+    clearance: 4,
+    note: "守夜人 / 学院级言灵封锁",
+    ability: "展开学院级压制领域，强迫周围言灵沉睡，使混血种暂时无法释放言灵。",
+    evidence: "守夜人的戒律压制入侵者、学生和曼施坦因；解除后学生言灵才恢复。"
+  },
+  111: {
+    title: "审判",
+    axis: "校勘录入",
+    tier: "高危裁决",
+    clearance: 4,
+    note: "上杉绘梨衣 / 死亡敕令",
+    ability: "裁决/死亡敕令类言灵，以语言对目标下达高危判决，具备强制杀伤或毁灭效果。",
+    evidence: "NORMA 将其归入上杉绘梨衣相关高危校勘项；序列号按高阶裁决逻辑暂置 111。"
+  },
+  113: {
+    title: "莱茵",
+    axis: "绝密",
+    tier: "绝密序列",
+    clearance: 4,
+    note: "通古斯记录 / 核爆级",
+    ability: "核爆级毁灭言灵，可引发类似通古斯大爆炸的超大规模爆发。",
+    evidence: "原文明确将通古斯大爆炸与莱茵关联，并给出序列号 113。"
+  },
+  114: {
+    title: "烛龙",
+    axis: "绝密",
+    tier: "绝密序列",
+    clearance: 4,
+    note: "火系终极 / 效果未知",
+    ability: "火系言灵终极形式，极度危险，效果未知，推定具备世界级报复或毁灭能力。",
+    evidence: "曼施坦因说明烛龙序列号 114，龙王曾试图掌握它。"
+  },
+  116: {
+    title: "湿婆业舞",
+    axis: "绝密",
+    tier: "灭世序列",
+    clearance: 4,
+    note: "芬里厄 / 不可撤销",
+    ability: "灭世级不可撤销言灵，发动后连释放者也被卷入，理论上可毁灭城市级区域。",
+    evidence: "原文称其与烛龙、莱茵一样不可撤销，并记载它曾毁灭古印度城市。"
+  },
+  117: {
+    title: "神谕",
+    axis: "权柄重排",
+    tier: "白王反相言灵",
+    clearance: 4,
+    recordId: "alc-speech-oracle",
+    note: "白王 / 克制皇帝",
+    ability: "白王反相敕令，可克制黑王的皇帝，并解除白王血裔对黑王统御的臣服。",
+    evidence: "原文说神谕是唯一已知克制皇帝的言灵，白王曾对所有血裔使用。"
+  },
+  118: {
+    title: "皇帝",
+    axis: "权柄重排",
+    tier: "黑王最高言灵",
+    clearance: 4,
+    recordId: "alc-speech-emperor",
+    note: "尼德霍格 / 龙皇召唤",
+    ability: "黑王最高统御言灵，对臣服于尼德霍格的龙族血裔产生召唤与压制。",
+    evidence: "原文说皇帝是龙皇统治后代的最高言灵，后裔听到会感受召唤。"
+  }
+};
+
+const fullLingSequenceCells: LingMatrixCell[] = Array.from({ length: 118 }, (_, index) => {
+  const sequence = index + 1;
+  const code = String(sequence).padStart(3, "0");
+  const confirmed = confirmedLingSequenceByNumber[sequence];
+
+  if (confirmed) {
+    return {
+      ...confirmed,
+      id: `seq-${code}`,
+      code,
+      x: 0,
+      y: 0
+    };
+  }
+
+  const tier = sequence >= 113
+    ? "绝密空位"
+    : sequence >= 101
+      ? "高危空位"
+      : sequence >= 89
+        ? "危险空位"
+        : "空位";
+
+  return {
+    id: `seq-${code}-empty`,
+    code,
+    title: "",
+    axis: "未收录",
+    tier,
+    clearance: 1,
+    note: "原文未公开该序列言灵名称。",
+    x: 0,
+    y: 0
+  };
+});
+
+function AlchemyVaultPanel({
+  module,
+  profile,
+  onSelectRecord,
+  onAccessLog
+}: {
+  module: HoloModule;
+  profile?: AgentProfile | null;
+  onSelectRecord: (record: ArchiveRecord) => void;
+  onAccessLog?: (log: Omit<AccessLog, "id" | "at">) => void;
+}) {
+  const clearance = profile?.clearance ?? 1;
+  const [activeCategory, setActiveCategory] = useState<AlchemyCategoryId>("speech");
+  const [selectedId, setSelectedId] = useState(alchemyRecords[0].id);
+  const [selectedLingCellId, setSelectedLingCellId] = useState("seq-028");
+  const selectedRecord = alchemyRecords.find((record) => record.id === selectedId) ?? alchemyRecords[0];
+  const visibleRecords = alchemyRecords.filter((record) => record.category === activeCategory);
+  const readableCount = alchemyRecords.filter((record) => clearance >= record.clearance).length;
+  const sealedCount = alchemyRecords.length - readableCount;
+  const selectedReadable = clearance >= selectedRecord.clearance;
+
+  function selectRecord(record: AlchemyRecord) {
+    setSelectedId(record.id);
+    onSelectRecord({
+      title: record.title,
+      level: record.code,
+      status: clearance >= record.clearance ? record.status : `需要 C-${record.clearance} 权限`,
+      detail: clearance >= record.clearance ? record.summary : "NORMA 已开放索引，完整技术记录仍需更高权限复核。"
+    });
+    if (clearance < record.clearance) {
+      onAccessLog?.({
+        action: "DENIED_ACCESS",
+        target: `${record.code} / ${record.title}`,
+        result: "DENIED",
+        detail: `CLEARANCE ${record.clearance} REQUIRED`
+      });
+    }
+  }
+
+  return (
+    <section className="alchemy-vault-panel" style={{ "--holo-color": module.color } as CSSProperties} aria-label="炼金封存层">
+      <header className="alchemy-vault-header">
+        <div>
+          <span>ALCHEMY VAULT / ICE CELLAR TECHNICAL INDEX</span>
+          <h1>冰窖炼金封存层</h1>
+          <p>NORMA 仅开放技术索引、封存状态、危险等级与授权路径。完整结构、咒文序列和武器参数保持遮蔽。</p>
+        </div>
+        <aside>
+          <strong>权限 C-{clearance}</strong>
+          <em>{readableCount} 可读 / {sealedCount} 封存</em>
+        </aside>
+      </header>
+
+      <div className="alchemy-vault-stats">
+        <article>
+          <span>索引接入</span>
+          <strong>{alchemyRecords.length}</strong>
+          <em>言灵 / 龙文 / 武器 / 器物 / 领域</em>
+        </article>
+        <article>
+          <span>冰窖封存</span>
+          <strong>{alchemyRecords.filter((record) => record.clearance >= 3).length}</strong>
+          <em>需要双钥或执行部复核</em>
+        </article>
+        <article>
+          <span>主色协议</span>
+          <strong>BLUE</strong>
+          <em>低温封存 / NORMA 青蓝</em>
+        </article>
+      </div>
+
+      <div className="alchemy-vault-layout">
+        <nav className="alchemy-category-stack" aria-label="炼金分类">
+          {alchemyCategories.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              className={activeCategory === category.id ? "is-active" : ""}
+              onClick={() => {
+                setActiveCategory(category.id);
+                const next = alchemyRecords.find((record) => record.category === category.id);
+                if (next) selectRecord(next);
+              }}
+            >
+              <strong>{category.label}</strong>
+              <span>{category.note}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="alchemy-index-list">
+          {visibleRecords.map((record) => {
+            const readable = clearance >= record.clearance;
+            return (
+              <button
+                key={record.id}
+                type="button"
+                className={`${selectedRecord.id === record.id ? "is-active" : ""}${readable ? "" : " is-sealed"}`}
+                onClick={() => selectRecord(record)}
+              >
+                <header>
+                  <span>{record.code}</span>
+                  <em>{readable ? record.status : `需要 C-${record.clearance}`}</em>
+                </header>
+                <h2>{record.title}</h2>
+                <p>{record.type}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        <aside className={`alchemy-detail-console${selectedReadable ? "" : " is-restricted"}`}>
+          <header>
+            <span>NORMA ALCHEMY DETAIL</span>
+            <strong>{selectedReadable ? "摘要开放" : `需要 C-${selectedRecord.clearance} 权限`}</strong>
+          </header>
+          <h2>{selectedRecord.title}</h2>
+          <div className="alchemy-detail-grid">
+            <article>
+              <span>归属</span>
+              <strong>{selectedRecord.king}</strong>
+            </article>
+            <article>
+              <span>来源</span>
+              <strong>{selectedRecord.source}</strong>
+            </article>
+            <article>
+              <span>状态</span>
+              <strong>{selectedReadable ? selectedRecord.status : "索引开放"}</strong>
+            </article>
+            <article>
+              <span>封存</span>
+              <strong>{selectedRecord.containment}</strong>
+            </article>
+          </div>
+          <p>{selectedReadable ? selectedRecord.summary : "完整异常记录需更高权限。NORMA 已记录专员访问请求，当前仅显示技术索引与风险提示。"}</p>
+          <div className="alchemy-detail-lines">
+            {(selectedReadable ? selectedRecord.details : selectedRecord.details.slice(0, 1)).map((line) => (
+              <em key={line}>{line}</em>
+            ))}
+          </div>
+          <div className="alchemy-linked-tags">
+            {selectedRecord.linked.map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+          <footer>
+            <span>NORMA 风险判断</span>
+            <strong>{selectedRecord.risk}</strong>
+          </footer>
+        </aside>
+      </div>
+    </section>
+  );
+}
+function AlchemyProjectionVaultPanel({
+  module,
+  profile,
+  onSelectRecord,
+  onAccessLog
+}: {
+  module: HoloModule;
+  profile?: AgentProfile | null;
+  onSelectRecord: (record: ArchiveRecord) => void;
+  onAccessLog?: (log: Omit<AccessLog, "id" | "at">) => void;
+}) {
+  const clearance = profile?.clearance ?? 1;
+  const [activeCategory, setActiveCategory] = useState<AlchemyCategoryId>("speech");
+  const [selectedId, setSelectedId] = useState(alchemyRecords[0].id);
+  const [selectedLingCellId, setSelectedLingCellId] = useState("seq-028");
+  const selectedRecord = alchemyRecords.find((record) => record.id === selectedId) ?? alchemyRecords[0];
+  const categoryRecords = alchemyRecords.filter((record) => record.category === activeCategory);
+  const selectedReadable = clearance >= selectedRecord.clearance;
+  const readableCount = alchemyRecords.filter((record) => clearance >= record.clearance).length;
+  const selectedLing = lingMetrics[selectedRecord.id];
+  const selectedLingCell =
+    fullLingSequenceCells.find((cell) => cell.id === selectedLingCellId) ??
+    fullLingSequenceCells.find((cell) => cell.id === "seq-028") ??
+    fullLingSequenceCells[0];
+  const selectedLingRecord = selectedLingCell.recordId
+    ? alchemyRecords.find((record) => record.id === selectedLingCell.recordId)
+    : null;
+  const lingCellReadable = clearance >= selectedLingCell.clearance;
+  const selectedLingCellEmpty = !selectedLingCell.title;
+  const readoutTitle =
+    activeCategory === "speech"
+      ? selectedLingCellEmpty
+        ? `序列 ${selectedLingCell.code} / 空位`
+        : `言灵·${selectedLingCell.title}`
+      : selectedRecord.title;
+  const readoutStatus =
+    activeCategory === "speech"
+      ? lingCellReadable
+        ? `${selectedLingCell.tier} / ${selectedLingCell.axis}`
+        : `需要 C-${selectedLingCell.clearance} 权限`
+      : selectedReadable
+        ? selectedRecord.status
+        : `需要 C-${selectedRecord.clearance} 权限`;
+  const readoutSummary =
+    activeCategory === "speech"
+      ? selectedLingCellEmpty
+        ? `序列 ${selectedLingCell.code} 暂无原文确认的言灵名称。NORMA 保留空位，不以推测资料填充。`
+        : !lingCellReadable
+          ? "索引开放。完整能力说明、声纹参数与释放记录仍需更高权限复核。"
+        : selectedLingRecord?.summary ??
+          `该言灵处于 ${selectedLingCell.tier} 序列。NORMA 已开放索引，完整声纹、领域参数与释放记录仍处于封存。`
+      : selectedReadable
+        ? selectedRecord.summary
+        : "索引开放。完整异常记录需更高权限。NORMA 已记录专员访问请求。";
+
+  function selectRecord(record: AlchemyRecord) {
+    setSelectedId(record.id);
+    const linkedLingCell = fullLingSequenceCells.find((cell) => cell.recordId === record.id);
+    if (linkedLingCell) setSelectedLingCellId(linkedLingCell.id);
+    onSelectRecord({
+      title: record.title,
+      level: record.code,
+      status: clearance >= record.clearance ? record.status : `需要 C-${record.clearance} 权限`,
+      detail: clearance >= record.clearance ? record.summary : "索引开放。完整炼金记录需更高权限复核。"
+    });
+    if (clearance < record.clearance) {
+      onAccessLog?.({
+        action: "DENIED_ACCESS",
+        target: `${record.code} / ${record.title}`,
+        result: "DENIED",
+        detail: `CLEARANCE ${record.clearance} REQUIRED`
+      });
+    }
+  }
+
+  function selectLingCell(cell: LingMatrixCell) {
+    setSelectedLingCellId(cell.id);
+    const record = cell.recordId ? alchemyRecords.find((item) => item.id === cell.recordId) : null;
+    if (record) {
+      selectRecord(record);
+      return;
+    }
+
+    onSelectRecord({
+      title: cell.title ? `言灵·${cell.title}` : `序列 ${cell.code} / 空位`,
+      level: cell.code,
+      status: cell.title ? `需要 C-${cell.clearance} 权限` : "原文未公开",
+      detail: cell.title
+        ? "索引开放。完整声纹、领域参数与释放记录仍处于 NORMA 封存。"
+        : "该序列暂无原文确认的言灵名称。NORMA 保留空位，不以推测资料填充。"
+    });
+    if (cell.title) {
+      onAccessLog?.({
+        action: "DENIED_ACCESS",
+        target: `${cell.code} / 言灵·${cell.title}`,
+        result: "DENIED",
+        detail: `CLEARANCE ${cell.clearance} REQUIRED`
+      });
+    }
+  }
+
+  return (
+    <section className="alchemy-projection-vault" style={{ "--holo-color": module.color } as CSSProperties} aria-label="炼金投影台">
+      <header className="alchemy-projection-status">
+        <span>ALCHEMY VAULT / ICE CELLAR LINK STABLE</span>
+        <strong>权限 C-{clearance}</strong>
+        <em>{readableCount} 可读 / {alchemyRecords.length - readableCount} 封存 / BLUE PROTOCOL</em>
+      </header>
+
+      <div className="alchemy-projection-stage">
+        <div className={`alchemy-main-projection is-${activeCategory}`}>
+          <div className="alchemy-projection-core" aria-hidden="true">
+            <i />
+            <b />
+            {activeCategory === "speech" && !selectedLingCellEmpty ? (
+              <>
+                <span>DRACONIC PHONEME</span>
+                <strong>{selectedLingCell.code}</strong>
+                <em>{selectedLing?.signature ?? 88}% 声纹匹配</em>
+              </>
+            ) : (
+              <strong>{activeCategory === "weapons" ? "VII" : "ALC"}</strong>
+            )}
+          </div>
+
+          {activeCategory === "speech" ? (
+            <div className="ling-periodic-system" aria-label="言灵周期表">
+              <header>
+                <span>DRACONIC COMMAND SEQUENCE</span>
+                <strong>言灵周期表</strong>
+                <em>按原文序列号落位 / 未确认序列保持空位</em>
+              </header>
+              <div className="ling-matrix-grid">
+                {fullLingSequenceCells.map((cell) => {
+                  const readable = clearance >= cell.clearance;
+                  const active = selectedLingCell.id === cell.id;
+                  const empty = !cell.title;
+                  return (
+                    <button
+                      key={cell.id}
+                      type="button"
+                      className={`ling-matrix-cell${active ? " is-active" : ""}${empty ? " is-empty" : ""}${readable ? "" : " is-sealed"}`}
+                      style={{
+                        "--cell-x": cell.x,
+                        "--cell-y": cell.y,
+                        "--cell-span": cell.span ?? 1
+                      } as CSSProperties}
+                      onClick={() => selectLingCell(cell)}
+                    >
+                      <span>{cell.code}</span>
+                      <strong>{cell.title}</strong>
+                      <em>{empty ? "空位" : readable ? cell.axis : `C-${cell.clearance}`}</em>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="ling-matrix-scan" aria-hidden="true" />
+            </div>
+          ) : null}
+
+          {false && activeCategory === "speech" ? (
+            <div className="alchemy-ling-ring" aria-label="言灵环形谱系">
+              <div className="ling-spectrum-rings" aria-hidden="true">
+                <span>声纹</span>
+                <span>血统</span>
+                <span>领域</span>
+              </div>
+              <div className="ling-waveform" aria-hidden="true">
+                {Array.from({ length: 18 }).map((_, index) => (
+                  <i key={index} style={{ "--bar": index } as CSSProperties} />
+                ))}
+              </div>
+              {categoryRecords.map((record, index) => {
+                const readable = clearance >= record.clearance;
+                const metrics = lingMetrics[record.id];
+                return (
+                  <button
+                    key={record.id}
+                    type="button"
+                    className={`alchemy-orbit-node node-${index + 1}${selectedRecord.id === record.id ? " is-active" : ""}${readable ? "" : " is-sealed"}`}
+                    onClick={() => selectRecord(record)}
+                  >
+                    <span>{record.code}</span>
+                    <strong>{record.title.replace("言灵·", "")}</strong>
+                    <em>{readable ? record.status : `C-${record.clearance}`}</em>
+                    {metrics ? <small>{metrics.vector}</small> : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {activeCategory === "weapons" ? (
+            <div className="seven-sins-coffer" aria-label="七宗罪冰窖武器匣">
+              <div className="coffer-lid">
+                <span>S20100144</span>
+                <strong>炼金刀剑 · 七宗罪</strong>
+                <em>双钥授权 / 冰窖顶级藏品</em>
+              </div>
+              <div className="sin-slots">
+                {["傲慢", "妒忌", "暴怒", "懒惰", "贪婪", "饕餮", "色欲"].map((sin) => (
+                  <button
+                    key={sin}
+                    type="button"
+                    className={selectedRecord.id === "alc-weapon-seven-sins" ? "is-active" : ""}
+                    onClick={() => selectRecord(alchemyRecords.find((record) => record.id === "alc-weapon-seven-sins") ?? selectedRecord)}
+                  >
+                    <i />
+                    <span>{sin}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="weapon-side-list">
+                {categoryRecords
+                  .filter((record) => record.id !== "alc-weapon-seven-sins")
+                  .map((record) => (
+                    <button key={record.id} type="button" onClick={() => selectRecord(record)}>
+                      {record.title}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          ) : null}
+
+          {activeCategory === "runes" ? (
+            <div className="rune-glass-wall" aria-label="龙文残缺译文墙">
+              {["铸城记录", "门禁协议", "活灵响应", "███ 权限遮蔽", "王座回声", "路径重构"].map((rune, index) => (
+                <button
+                  key={rune}
+                  type="button"
+                  className={index === 3 ? "is-redacted" : ""}
+                  onClick={() => selectRecord(categoryRecords[0] ?? selectedRecord)}
+                >
+                  {rune}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {activeCategory === "artifacts" ? (
+            <div className="artifact-containment-grid" aria-label="炼金器物封存柜">
+              {categoryRecords.map((record) => (
+                <button
+                  key={record.id}
+                  type="button"
+                  className={selectedRecord.id === record.id ? "is-active" : ""}
+                  onClick={() => selectRecord(record)}
+                >
+                  <i />
+                  <span>{record.code}</span>
+                  <strong>{record.title}</strong>
+                  <em>{clearance >= record.clearance ? record.status : `需要 C-${record.clearance}`}</em>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {activeCategory === "fields" ? (
+            <div className="field-projection-map" aria-label="炼金领域结构投影">
+              <div className="field-rings" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </div>
+              {categoryRecords.map((record, index) => (
+                <button
+                  key={record.id}
+                  type="button"
+                  className={`field-node node-${index + 1}${selectedRecord.id === record.id ? " is-active" : ""}`}
+                  onClick={() => selectRecord(record)}
+                >
+                  <span>{record.code}</span>
+                  <strong>{record.title}</strong>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <aside className={`alchemy-norma-readout${activeCategory === "speech" ? (lingCellReadable ? "" : " is-restricted") : selectedReadable ? "" : " is-restricted"}`}>
+          <span>NORMA 解析</span>
+          <h2>{readoutTitle}</h2>
+          <strong>{readoutStatus}</strong>
+          <p>{readoutSummary}</p>
+          {activeCategory === "speech" && lingCellReadable && selectedLingCell.ability ? (
+            <div className="ling-ability-brief">
+              <section>
+                <span>能力说明</span>
+                <p>{selectedLingCell.ability}</p>
+              </section>
+            </div>
+          ) : null}
+          <div className="ling-readout-source">
+            <em>{activeCategory === "speech" ? selectedLingCell.axis : selectedRecord.king}</em>
+            <em>{activeCategory === "speech" ? selectedLingCell.tier : selectedRecord.source}</em>
+            <em>{activeCategory === "speech" ? `C-${selectedLingCell.clearance} / ${selectedLingCell.note}` : selectedRecord.containment}</em>
+          </div>
+          <strong>
+            {activeCategory === "speech"
+              ? lingCellReadable
+                ? "能力摘要开放"
+                : `需要 C-${selectedLingCell.clearance} 权限`
+              : selectedReadable
+                ? selectedRecord.status
+                : `需要 C-${selectedRecord.clearance} 权限`}
+          </strong>
+          <p>
+            {activeCategory === "speech"
+              ? lingCellReadable
+                ? "当前仅开放能力摘要。完整声纹、领域参数与释放记录仍由冰窖封存。"
+                : "索引开放。完整声纹、领域参数与释放记录仍需更高权限。NORMA 已记录专员访问请求。"
+              : selectedReadable
+                ? selectedRecord.summary
+                : "索引开放。完整异常记录需更高权限。NORMA 已记录专员访问请求。"}
+          </p>
+          {activeCategory === "speech" && selectedLing ? (
+            <dl className="ling-readout-grid">
+              <div>
+                <dt>声纹匹配</dt>
+                <dd>{selectedLing.signature}%</dd>
+              </div>
+              <div>
+                <dt>血统响应</dt>
+                <dd>{selectedLing.bloodline}</dd>
+              </div>
+              <div>
+                <dt>领域稳定</dt>
+                <dd>{selectedLing.field}</dd>
+              </div>
+              <div>
+                <dt>王座相似</dt>
+                <dd>{selectedLing.throne}</dd>
+              </div>
+              <div className="is-wide">
+                <dt>失控阈值</dt>
+                <dd>{selectedLing.threshold}</dd>
+              </div>
+            </dl>
+          ) : null}
+          <div>
+            <em>{selectedRecord.king}</em>
+            <em>{selectedRecord.source}</em>
+            <em>{selectedRecord.containment}</em>
+          </div>
+        </aside>
+      </div>
+
+      <nav className="alchemy-mode-dock" aria-label="炼金投影模式">
+        {alchemyCategories.map((category) => (
+          <button
+            key={category.id}
+            type="button"
+            className={activeCategory === category.id ? "is-active" : ""}
+            onClick={() => {
+              setActiveCategory(category.id);
+              const next = alchemyRecords.find((record) => record.category === category.id);
+              if (next) selectRecord(next);
+            }}
+          >
+            <strong>{category.label}</strong>
+            <span>{category.note}</span>
+          </button>
+        ))}
+      </nav>
+    </section>
+  );
+}
+
 function ArchivePanel({
   module,
   selectedRecord,
@@ -5750,6 +7209,17 @@ function ArchivePanel({
   if (module.id === "surveillance") {
     return (
       <SurveillanceGlobePanel
+        module={module}
+        profile={profile}
+        onSelectRecord={onSelectRecord}
+        onAccessLog={onAccessLog}
+      />
+    );
+  }
+
+  if (module.id === "alchemy") {
+    return (
+      <AlchemyProjectionVaultPanel
         module={module}
         profile={profile}
         onSelectRecord={onSelectRecord}
@@ -6238,7 +7708,11 @@ export default function HoloTerminal3D({
               onAccessLog={onAccessLog}
             />
           )}
-          {activeModule.id !== "overview" && activeModule.id !== "surveillance" && activeModule.id !== "evidence" && selectedRecord ? (
+          {activeModule.id !== "overview" &&
+          activeModule.id !== "surveillance" &&
+          activeModule.id !== "evidence" &&
+          activeModule.id !== "alchemy" &&
+          selectedRecord ? (
             <div ref={detailDrawerRef}>
               <ArchiveDetailDrawer module={activeModule} record={selectedRecord} />
             </div>
@@ -6279,7 +7753,9 @@ export default function HoloTerminal3D({
         卡塞尔学院 · {interfaceName} 终端 · 连接协议 4.2.7
       </div>
       <div className="terminal-vignette" aria-hidden="true" />
-      {!inDeepArchive && activePreset !== "evidence" ? <HoloScene activeId={activePreset} onSelect={setActivePreset} /> : null}
+      {!inDeepArchive && activePreset !== "evidence" && activePreset !== "missions" && activePreset !== "alchemy" ? (
+        <HoloScene activeId={activePreset} onSelect={setActivePreset} />
+      ) : null}
     </main>
   );
 }
