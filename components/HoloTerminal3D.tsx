@@ -6103,6 +6103,7 @@ type LingMatrixCell = {
   note: string;
   ability?: string;
   evidence?: string;
+  power?: string;
   x: number;
   y: number;
   span?: number;
@@ -6431,6 +6432,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     recordId: "alc-speech-snake",
     note: "叶胜、曼施坦因 / 生物电流侦测",
     ability: "释放者向“蛇群”下令，以生物电流形式进入水体、金属和缝隙，侦测环境并传递信号。",
+    power: "侦测级。直接杀伤低，任务价值极高；在水下、金属遗迹和封闭通道中可决定行动成败。",
     evidence: "叶胜在青铜城水域释放；曼施坦因确认自己也拥有“蛇”，且领域更大。"
   },
   28: {
@@ -6440,6 +6442,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 3,
     note: "同一序列号出现两种言灵名称，需进入冰窖校勘记录。",
     ability: "炽日制造强烈光领域，迫使有视觉目标失明；王之侍强化领域内活体体能，可把同伴强化为军队。",
+    power: "战术级。炽日偏压制，王之侍偏群体增幅；序列冲突使该位点保持复核状态。",
     evidence: "雷蒙德“炽日”和保安公司事件中的“王之侍”均被标为序列号 28，NORMA 标记为序列冲突。"
   },
   45: {
@@ -6449,6 +6452,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 2,
     note: "3E 考试 / 预知性灵视",
     ability: "触发预知性灵视，使接收者从声音、圣咏或图像残片中捕捉未来预兆并记录。",
+    power: "情报级。几乎无直接杀伤，但能提前暴露高危事件走向。",
     evidence: "3E 考试场景中，路明非辨认出“言灵·先知”并立即进入绘图式灵视。"
   },
   59: {
@@ -6459,6 +6463,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     recordId: "alc-speech-kama",
     note: "恺撒 / 风域听觉",
     ability: "驱使领域内的风捕捉声音，将心跳、气流和微弱声响回传给释放者，形成战场听觉地图。",
+    power: "侦测级到战术级。直接攻击有限，但在黑暗、混战和城市环境中具有压倒性信息优势。",
     evidence: "恺撒在英灵殿黑暗中以镰鼬完成侦听；原文明确给出序列号 59。"
   },
   69: {
@@ -6468,6 +6473,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 3,
     note: "入侵者队长 / 低可见领域",
     ability: "生成小范围隐匿领域，降低存在感并遮蔽视觉，使多人借黑暗贴身移动。",
+    power: "渗透级。正面杀伤低，但适合暗杀、潜入和近距离突袭。",
     evidence: "学院入侵者以冥照贴身成组潜行，原文描述其领域约两米半径，并伴随黑色空气痕迹。"
   },
   71: {
@@ -6477,6 +6483,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 3,
     note: "帕西、恺撒暴血后 / 风刃爆发",
     ability: "风属性杀伤言灵，形成透明尖锐气流，像无形短矢一样密集散射。",
+    power: "杀伤级。可切割人体和轻型障碍，暴血状态下风险上调。",
     evidence: "吸血镰与无尘之地同时爆发时，原文描写为透明而尖锐的影子，风属性领域发生融合扩张。"
   },
   74: {
@@ -6486,6 +6493,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 3,
     note: "夏弥 / 操纵空气流",
     ability: "以释放者为中心操纵空气流动形成漩涡；控制力足够时可悬浮或短暂浮空移动。",
+    power: "高危战术级。可用于位移、牵引、压制和撕裂，接近王座级风权柄边缘。",
     evidence: "原文明确称夏弥依靠风王之瞳，并给出序列号 74。"
   },
   81: {
@@ -6495,6 +6503,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 3,
     note: "曼斯、帕西 / 排斥领域",
     ability: "在释放者周围形成排斥领域，由内向外推动气压或水体，隔离爆炸、碎片、火焰或水压。",
+    power: "防御级。可抵御碎片、爆炸余波与水压，但持续时间和领域强度受血统限制。",
     evidence: "曼斯在水下与爆炸场景中释放，形成球形屏障/空气壳；帕西记录中也出现同类防御场。"
   },
   84: {
@@ -6504,6 +6513,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 3,
     note: "昂热、楚天骄 / 时间延展",
     ability: "延展释放者所在领域的时间感，使外界运动被大幅放慢；高阶维持会消耗精神和肉体。",
+    power: "战略级。直接杀伤不高，但可改变刺杀、近战和处决窗口。",
     evidence: "昂热多次使用时零，楚天骄也被确认拥有同类时间言灵；“永恒”与“时零”的关系暂作校勘合并。"
   },
   87: {
@@ -6513,6 +6523,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 3,
     note: "肉体与骨骼强化 / 序列待复核",
     ability: "强化骨骼、肌肉和皮肤，使身体呈青铜化状态并获得远超常人的力量。",
+    power: "强化级。可把释放者短暂提升到重装突击单位强度。",
     evidence: "原文中释放者骨骼爆响、皮肤泛青铜色，并可抛起重达三吨的石棺。"
   },
   89: {
@@ -6523,6 +6534,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     recordId: "alc-speech-junyan",
     note: "楚子航 / 高热爆燃",
     ability: "压缩并释放火元素与热源，形成高温爆燃、冲击和大范围焚烧。",
+    power: "高危杀伤级。室内或易燃环境中可迅速升级为群体灾害。",
     evidence: "楚子航释放君焰时，原文将其称为青铜与火之王一脉的“君王怒火”。"
   },
   91: {
@@ -6532,6 +6544,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 4,
     note: "重力领域 / 高阶威压",
     ability: "制造重力/威压领域，迫使领域内目标下跪或贴地，严重时可压碎骨骼。",
+    power: "领域压制级。对混血种、龙类和普通人均有极强压迫效果。",
     evidence: "原文说明王权领域内无人能直立，目标会承受数十倍至数百倍重量。"
   },
   96: {
@@ -6541,6 +6554,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 3,
     note: "风间琉璃（源稚女） / 精神控制",
     ability: "精神控制类言灵，将目标拖入极真实噩梦；若目标相信自己在梦中死亡，现实意识也会消亡。",
+    power: "精神高危级。无需破坏肉体即可摧毁意识，适合单体处决。",
     evidence: "风间琉璃以梦貘困住源稚生，原文称它看似不具攻击力，却极其凶险。"
   },
   106: {
@@ -6550,6 +6564,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 4,
     note: "守夜人 / 学院级言灵封锁",
     ability: "展开学院级压制领域，强迫周围言灵沉睡，使混血种暂时无法释放言灵。",
+    power: "规则级。自身杀伤近乎为零，但能封锁整片区域的言灵优势。",
     evidence: "守夜人的戒律压制入侵者、学生和曼施坦因；解除后学生言灵才恢复。"
   },
   111: {
@@ -6559,6 +6574,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 4,
     note: "上杉绘梨衣 / 死亡敕令",
     ability: "裁决/死亡敕令类言灵，以语言对目标下达高危判决，具备强制杀伤或毁灭效果。",
+    power: "裁决级。单体与小范围杀伤极高，风险取决于释放语句和目标抗性。",
     evidence: "NORMA 将其归入上杉绘梨衣相关高危校勘项；序列号按高阶裁决逻辑暂置 111。"
   },
   113: {
@@ -6568,6 +6584,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 4,
     note: "通古斯记录 / 核爆级",
     ability: "核爆级毁灭言灵，可引发类似通古斯大爆炸的超大规模爆发。",
+    power: "灾变级。可摧毁城市或区域生态，禁止常规战术引用。",
     evidence: "原文明确将通古斯大爆炸与莱茵关联，并给出序列号 113。"
   },
   114: {
@@ -6577,6 +6594,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 4,
     note: "火系终极 / 效果未知",
     ability: "火系言灵终极形式，极度危险，效果未知，推定具备世界级报复或毁灭能力。",
+    power: "禁忌级。理论上高于普通火系杀伤，完整效果保持绝密。",
     evidence: "曼施坦因说明烛龙序列号 114，龙王曾试图掌握它。"
   },
   116: {
@@ -6586,6 +6604,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     clearance: 4,
     note: "芬里厄 / 不可撤销",
     ability: "灭世级不可撤销言灵，发动后连释放者也被卷入，理论上可毁灭城市级区域。",
+    power: "灭世级。启动后不可撤销，视为同归于尽式王座灾害。",
     evidence: "原文称其与烛龙、莱茵一样不可撤销，并记载它曾毁灭古印度城市。"
   },
   117: {
@@ -6596,6 +6615,7 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     recordId: "alc-speech-oracle",
     note: "白王 / 克制皇帝",
     ability: "白王反相敕令，可克制黑王的皇帝，并解除白王血裔对黑王统御的臣服。",
+    power: "王权级。杀伤不是核心，真正威力在于重写血裔服从关系。",
     evidence: "原文说神谕是唯一已知克制皇帝的言灵，白王曾对所有血裔使用。"
   },
   118: {
@@ -6606,9 +6626,262 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     recordId: "alc-speech-emperor",
     note: "尼德霍格 / 龙皇召唤",
     ability: "黑王最高统御言灵，对臣服于尼德霍格的龙族血裔产生召唤与压制。",
+    power: "最高王权级。不是战术言灵，而是血统、精神和秩序层面的终极统御。",
     evidence: "原文说皇帝是龙皇统治后代的最高言灵，后裔听到会感受召唤。"
   }
 };
+
+const inferredLingNames = [
+  "听雷", "血钟", "镜鳞", "息壤", "灰羽", "潮汐", "银径", "焰息", "骨笛", "薄暮",
+  "星痕", "铁幕", "霜径", "灵柩", "空弦", "赤鸦", "白蜃", "山鸣", "流火", "冰舌",
+  "风切", "渊步", "金瞳", "石脉", "烬衣", "水镜", "霆鼓", "尘锁", "焚轮", "海啸",
+  "龙脉", "雾宫", "骨钟", "青焰", "逆鳞", "空潮", "雷池", "赤潮", "石棺", "星坠",
+  "风棘", "血誓", "镜宫", "火刑", "地鸣", "深流", "天幕", "魂灯", "铁王冠", "霜眠",
+  "龙息", "雾锁", "逆潮", "星门", "白噪", "焰冠", "荒庭", "黑帆", "天弦", "石王座",
+  "赤雷", "深渊回廊", "风暴眼", "炼狱门", "群山敕令", "无声国度", "潮汐王冠", "天火", "骨海", "灵视塔",
+  "黑潮", "星蚀", "焰狱", "虚空回声", "万象锁", "山海令", "灰烬王座", "天穹裂隙", "白夜", "终钟",
+  "灵魂铸炉", "深海王权", "风暴王庭", "青铜天幕", "赤色弥撒", "虚无敕令", "地轴偏转", "群星坠落", "静默王冠", "黑日"
+];
+
+const inferredLingAspects = ["精神", "感知", "风", "火", "地", "水", "金属", "空间", "生命", "规则"];
+
+function getInferredLingClearance(sequence: number): AgentProfile["clearance"] {
+  if (sequence >= 101) return 4;
+  if (sequence >= 69) return 3;
+  if (sequence >= 29) return 2;
+  return 1;
+}
+
+function getInferredLingTier(sequence: number) {
+  if (sequence >= 113) return "禁忌推演";
+  if (sequence >= 101) return "高危推演";
+  if (sequence >= 89) return "危险推演";
+  if (sequence >= 61) return "领域推演";
+  if (sequence >= 29) return "战术推演";
+  return "基础推演";
+}
+
+const inferredLingMechanisms: Record<string, string[]> = {
+  精神: [
+    "把释放者的龙文声纹压入目标潜意识，使目标在数秒内误认释放者为上级命令源。",
+    "诱发目标脑内的恐惧记忆回声，让其把当前场景叠加成最危险的过往片段。",
+    "切断短时记忆写入，使目标完成动作后无法记得自己为何行动。",
+    "放大目标对龙文的敬畏反应，使混血种出现跪伏、迟疑或本能退让。",
+    "把一个简单指令伪装成目标自己的念头，适合低烈度审讯和撤离诱导。",
+    "制造群体性错觉坐标，让小队成员对门、走廊和敌我位置产生不同判断。",
+    "暂时冻结目标的攻击意图，使其保留意识但失去扣动扳机或挥刀的决断。",
+    "把释放者的心跳节律写入周围人群，令群体呼吸同步并进入易受暗示状态。",
+    "抽取目标即将说出口的一句话，使通讯链路出现关键空白。",
+    "把死亡预感提前投射给目标，使其在未受伤时产生濒死反应。"
+  ],
+  感知: [
+    "读取雷暴前的低频震动，把建筑、地下水和金属框架中的异常移动标成回声点。",
+    "捕捉血液流速变化，用体温、心跳和肾上腺素反应判断目标是否说谎。",
+    "把反光面转化为临时观察孔，可从碎玻璃、水面和金属片上拼出盲区影像。",
+    "追踪空气中残留的龙血气味，重建数分钟前经过此处的高血统个体路径。",
+    "感知炼金材料的微弱共鸣，区分普通金属、活灵机关和王座遗留物。",
+    "把声音折成可视波纹，释放者能在完全黑暗中读取脚步、枪机和呼吸方向。",
+    "探测空间边界的折痕，用于发现尼伯龙根入口、伪装门和循环走廊。",
+    "短时看见热源将要移动的方向，适合预判近战动作和弹道落点。",
+    "读取水体中的压力差，判断深水目标体积、速度和是否携带炼金器物。",
+    "感知龙文被阅读后的残留情绪，把危险文本标记成不同颜色的灵视噪声。"
+  ],
+  风: [
+    "在刀刃周围形成薄真空层，使一次挥击带出肉眼难辨的远程风刃。",
+    "压低目标周围气压，让其短暂失聪、眩晕并失去平衡。",
+    "把细小尘埃排列成风场线，显示隐形目标和高速移动轨迹。",
+    "制造一段逆风走廊，子弹、箭矢和碎片进入后速度会被连续削弱。",
+    "以释放者为中心形成旋转气泡，短时托举身体越过障碍或坠落间隙。",
+    "把声音从一个位置搬运到另一个位置，用假脚步和假呼吸诱导敌人开火。",
+    "令封闭空间内的空气突然向外抽离，形成窒息和耳压伤害。",
+    "在目标肺部周围制造乱流，使其无法稳定呼吸或念诵言灵。",
+    "把雨滴、沙粒或灰尘加速成密集刺针，适合沙漠、火场和废墟环境。",
+    "构建小型风暴眼，中心保持静止，外环持续撕扯接近者。"
+  ],
+  火: [
+    "点燃目标周围的氧气边界而非目标本身，形成贴身火环和短促爆鸣。",
+    "把热量压进金属表层，使枪械、门锁和刀剑在几秒内软化变形。",
+    "制造一枚延迟燃烧的火种，附着在衣物、木料或油污上后再突然爆燃。",
+    "抽走局部热量再瞬间回灌，使玻璃、陶瓷和骨骼出现热胀冷缩裂纹。",
+    "把火焰拉成薄幕，用于遮断视线、隔离通道和逼退低阶死侍。",
+    "使目标影子边缘出现蓝火，火焰沿影子接触面蔓延而非沿实体蔓延。",
+    "引爆空气中的粉尘和花粉，适合仓库、废墟、森林和地下空间。",
+    "压缩热浪形成不可见冲击面，击退近身目标并烧伤呼吸道。",
+    "在释放者手掌形成短时白炽核心，可切开薄金属和炼金锁扣。",
+    "让已有火源反向燃烧，短时间消耗氧气并制造黑烟遮蔽。"
+  ],
+  地: [
+    "让脚下岩层短时软化再凝固，把目标踝部和膝部锁进地面。",
+    "引发沿直线传播的微震，专门破坏门轴、墙体裂缝和地下管线。",
+    "把碎石聚成临时盾墙，能挡住枪弹碎片但无法承受重型炮击。",
+    "压缩一小块地面密度，让落脚者像踩入深井一样突然下沉。",
+    "唤醒建筑承重结构的疲劳点，使墙面出现可控裂缝供小队穿行。",
+    "改变局部重心方向，让目标误判上下左右并跌向错误方向。",
+    "把骨骼中的钙质共鸣放大，造成剧痛、僵直和短时行动迟缓。",
+    "让沙土形成缓慢移动的环，掩埋脚印、弹壳和血迹。",
+    "在地面生成低矮石棘，限制车辆轮胎、马匹和高速死侍的移动。",
+    "使地下空腔发出回声，帮助判断巢穴、墓室和尼伯龙根支路。"
+  ],
+  水: [
+    "把空气中的水汽凝成薄雾，雾层会吸附血腥味并暴露受伤目标。",
+    "让一段水流违背重力上涌，形成临时水墙或深水逃生通道。",
+    "操纵血液表面张力，使轻伤快速止血，也能让伤口重新撕开。",
+    "在水面下生成静默涡流，拖拽目标脚踝并遮蔽挣扎声。",
+    "把汗液、雨水和雾滴连成感知网，追踪刚经过区域的活体热源。",
+    "冻结极薄一层水膜，令地面、刀刃或门把手变成不可控陷阱。",
+    "制造高压水针，能穿透软组织和普通防护服，但对重甲效果有限。",
+    "让水体短暂失去浮力，使潜水目标突然下沉数米。",
+    "把深水压力投射到空气中，压迫胸腔并干扰呼吸。",
+    "净化水中的龙血残留，让污染样本短时沉降便于收集。"
+  ],
+  金属: [
+    "唤醒金属疲劳，让刀剑、枪管和门锁在受力瞬间从内部裂开。",
+    "让铜、铁、银等金属产生不同鸣响，用声音识别隐藏机关。",
+    "把细小金属屑吸附成漂浮标记，沿炼金回路显示能量流向。",
+    "强化一件冷兵器的边缘，使其短时间具备切开鳞片的能力。",
+    "让金属表面长出倒刺，限制握持者松手或迫使目标丢弃武器。",
+    "使弹头偏离原轨迹数厘米，足够改变致命射击但无法停止火力覆盖。",
+    "把断裂齿轮重新咬合数秒，临时启动濒死的炼金机关。",
+    "令金属门框形成闭合回路，困住穿过门槛的活体目标。",
+    "把目标体内金属植入物、弹片或首饰加热，造成定位与威慑。",
+    "让青铜器表层出现古老文字投影，读取被磨损的铭刻。"
+  ],
+  空间: [
+    "让两点之间的直线距离出现一次折返，追击者会错过真正的转角。",
+    "把一扇门后的空间短暂替换成数分钟前的同一地点残影。",
+    "制造半径数米的路径迟滞区，进入者动作正常但离开速度被拖慢。",
+    "折叠一小段声音传播路径，使远处的脚步像从身后传来。",
+    "将投掷物的落点偏移半米，适合改变手雷、短矛和飞刀轨迹。",
+    "把释放者的影子钉在原地，制造一具可误导感知言灵的假坐标。",
+    "打开一次极短暂的观察缝，只能看见封闭空间内的一帧图像。",
+    "把房间边界向内挤压数厘米，制造幽闭感和轻度结构损伤。",
+    "让目标重复走回同一段走廊，直到外界声音或血统压制打破循环。",
+    "切断小范围内的方向感，使指南针、地图和直觉同时失效。"
+  ],
+  生命: [
+    "刺激肌肉纤维短时爆发，提升冲刺和跳跃能力，但结束后会产生撕裂痛。",
+    "让目标伤口周围组织过度增生，暂时止血却可能留下畸形疤痕。",
+    "放大黄金瞳威慑，使低血统目标出现本能退缩和瞳孔失焦。",
+    "加速毒素或药剂在血液中的循环，用于急救也可用于审讯威慑。",
+    "让释放者短时无视疼痛，但神经损伤会在言灵结束后集中爆发。",
+    "唤醒沉睡的龙血反应，提升力量同时增加失控和死侍化风险。",
+    "压低目标心率和体温，使其在热成像和听觉侦测中近似消失。",
+    "让皮肤角质和鳞片化趋势短时增强，抵御切割但削弱触觉。",
+    "干扰目标前庭系统，使其在平地上产生坠落感和呕吐反应。",
+    "把释放者的恢复力集中到单一器官，换取一次危险的濒死续航。"
+  ],
+  规则: [
+    "在小范围内声明“不得开火”，使扣动扳机的动作持续失败数秒。",
+    "把一扇门设为临时禁区，未被允许者会反复回到门外一步。",
+    "强制目标只能说真话中的一部分，使谎言被吞咽但沉默仍然可行。",
+    "规定一件物品的归属，短时间内非持有人无法稳定抓握它。",
+    "让领域内所有言灵延迟一拍释放，打断高速连携和咒文节奏。",
+    "把释放者画出的边界视作不可越线，低阶目标会被无形阻力挡回。",
+    "指定一个动作成为触发条件，目标完成该动作时会被短暂束缚。",
+    "临时取消一处机关的“开启”状态，使其回到未授权闭合。",
+    "规定某个名字不可被呼唤，任何试图说出该名的人都会失声。",
+    "让战场中的一个选择被重复执行，目标会不断回到同一错误决策。"
+  ]
+};
+
+const inferredLingPowerRisks = [
+  "主要风险是误伤友军和扰乱通讯链路。",
+  "若由高血统释放，范围会明显超出训练场标定。",
+  "在尼伯龙根或炼金遗迹内可能触发二次共鸣。",
+  "适合单点压制，不适合长时间维持。",
+  "对龙类亚种效果不稳定，需要现场复测。",
+  "与暴血、龙文阅读或高压环境叠加时风险上调。",
+  "普通人暴露超过安全阈值会留下长期后遗症。",
+  "封闭空间中威力会被放大，开放地形中衰减明显。",
+  "如果目标具备同类权柄，可能出现反向夺取。",
+  "NORMA 建议只在执行部授权任务中试验性调用。"
+];
+
+function getLingScale(sequence: number) {
+  const radius = Math.round(4 + sequence * 2.8);
+  const duration = Math.round(6 + sequence * 1.35);
+  const priority = Math.min(10, Math.ceil(sequence / 12));
+  const casualtyBand = sequence >= 113
+    ? "王座灾变"
+    : sequence >= 101
+      ? "城市级失控"
+      : sequence >= 89
+        ? "街区级杀伤"
+        : sequence >= 61
+          ? "建筑级压制"
+          : sequence >= 29
+            ? "小队级战术"
+            : "单体级干扰";
+  const intensity = sequence >= 113
+    ? "禁忌"
+    : sequence >= 101
+      ? "战略"
+      : sequence >= 89
+        ? "高危"
+        : sequence >= 61
+          ? "领域"
+          : sequence >= 29
+            ? "战术"
+            : "基础";
+
+  return { radius, duration, priority, casualtyBand, intensity };
+}
+
+function getLingEscalation(sequence: number, aspect: string) {
+  if (sequence >= 113) return `序列 ${sequence} 已进入王座边缘，${aspect}权柄不再表现为单一技能，而会改写灾害范围内的底层规则。`;
+  if (sequence >= 101) return `序列 ${sequence} 可压过常规混血种言灵，领域内低阶${aspect}反应会被强制接管。`;
+  if (sequence >= 89) return `序列 ${sequence} 具备主动杀伤与持续压制，释放失败也会留下明显环境后遗症。`;
+  if (sequence >= 61) return `序列 ${sequence} 已形成稳定领域，效果可覆盖多目标并维持到小队战斗结束。`;
+  if (sequence >= 29) return `序列 ${sequence} 从训练级进入任务级，可影响地形、装备或敌方行动节奏。`;
+  return `序列 ${sequence} 仍属于低阶安全窗口，主要依赖精确控制而非绝对破坏。`;
+}
+
+function getInferredLingPower(sequence: number, aspect: string, title: string) {
+  const scale = getLingScale(sequence);
+  const risk = inferredLingPowerRisks[(sequence * 3 + aspect.length) % inferredLingPowerRisks.length];
+  return `${title}评为${scale.intensity}级，基准半径 ${scale.radius} 米，稳定维持约 ${scale.duration} 秒，龙文优先级 ${scale.priority}/10，风险带为${scale.casualtyBand}；${risk}`;
+}
+
+function getInferredLingAbility(sequence: number, aspect: string, title: string) {
+  const mechanisms = inferredLingMechanisms[aspect] ?? inferredLingMechanisms.规则;
+  const mechanism = mechanisms[Math.floor((sequence - 1) / inferredLingAspects.length) % mechanisms.length];
+  const sequenceTag = String(sequence).padStart(3, "0");
+  const scale = getLingScale(sequence);
+  const escalation = getLingEscalation(sequence, aspect);
+
+  return `${title}为 NORMA 根据原著权柄逻辑补全的 ${sequenceTag} 号推演言灵。${mechanism}${escalation}本序列的能力指纹为 ${scale.radius} 米 / ${scale.duration} 秒 / 优先级 ${scale.priority}，不可与其他序列合并归档。`;
+}
+
+function inferLingSequence(sequence: number): Omit<LingMatrixCell, "id" | "code" | "x" | "y"> {
+  const aspect = inferredLingAspects[(sequence - 1) % inferredLingAspects.length];
+  const title = inferredLingNames[(sequence - 1) % inferredLingNames.length];
+
+  return {
+    title,
+    axis: "NORMA 推演",
+    tier: getInferredLingTier(sequence),
+    clearance: getInferredLingClearance(sequence),
+    note: `${aspect}权柄 / 非原文确认`,
+    ability: getInferredLingAbility(sequence, aspect, title),
+    power: getInferredLingPower(sequence, aspect, title)
+  };
+}
+
+function getLingCellStatusClass(cell: LingMatrixCell) {
+  if (cell.axis === "序列冲突") return " is-conflict";
+  if (cell.axis === "NORMA 推演") return " is-inferred";
+  return " is-confirmed";
+}
+
+function getLingCellRankClass(code: string) {
+  const sequence = Number.parseInt(code, 10);
+  if (!Number.isFinite(sequence)) return "";
+  if (sequence >= 113) return " rank-forbidden";
+  if (sequence >= 89) return " rank-danger";
+  if (sequence >= 61) return " rank-domain";
+  if (sequence >= 29) return " rank-mid";
+  return " rank-low";
+}
 
 const fullLingSequenceCells: LingMatrixCell[] = Array.from({ length: 118 }, (_, index) => {
   const sequence = index + 1;
@@ -6625,22 +6898,12 @@ const fullLingSequenceCells: LingMatrixCell[] = Array.from({ length: 118 }, (_, 
     };
   }
 
-  const tier = sequence >= 113
-    ? "绝密空位"
-    : sequence >= 101
-      ? "高危空位"
-      : sequence >= 89
-        ? "危险空位"
-        : "空位";
+  const inferred = inferLingSequence(sequence);
 
   return {
     id: `seq-${code}-empty`,
     code,
-    title: "",
-    axis: "未收录",
-    tier,
-    clearance: 1,
-    note: "原文未公开该序列言灵名称。",
+    ...inferred,
     x: 0,
     y: 0
   };
@@ -6830,6 +7093,8 @@ function AlchemyProjectionVaultPanel({
     : null;
   const lingCellReadable = clearance >= selectedLingCell.clearance;
   const selectedLingCellEmpty = !selectedLingCell.title;
+  const selectedLingSequence = Number.parseInt(selectedLingCell.code, 10);
+  const selectedLingScale = Number.isFinite(selectedLingSequence) ? getLingScale(selectedLingSequence) : null;
   const readoutTitle =
     activeCategory === "speech"
       ? selectedLingCellEmpty
@@ -6931,18 +7196,20 @@ function AlchemyProjectionVaultPanel({
               <header>
                 <span>DRACONIC COMMAND SEQUENCE</span>
                 <strong>言灵周期表</strong>
-                <em>按原文序列号落位 / 未确认序列保持空位</em>
+                <em>原文确认 / NORMA 推演 / 序列越高危险度越高</em>
               </header>
               <div className="ling-matrix-grid">
                 {fullLingSequenceCells.map((cell) => {
                   const readable = clearance >= cell.clearance;
                   const active = selectedLingCell.id === cell.id;
                   const empty = !cell.title;
+                  const statusClass = getLingCellStatusClass(cell);
+                  const rankClass = getLingCellRankClass(cell.code);
                   return (
                     <button
                       key={cell.id}
                       type="button"
-                      className={`ling-matrix-cell${active ? " is-active" : ""}${empty ? " is-empty" : ""}${readable ? "" : " is-sealed"}`}
+                      className={`ling-matrix-cell${statusClass}${rankClass}${active ? " is-active" : ""}${empty ? " is-empty" : ""}${readable ? "" : " is-sealed"}`}
                       style={{
                         "--cell-x": cell.x,
                         "--cell-y": cell.y,
@@ -7085,19 +7352,40 @@ function AlchemyProjectionVaultPanel({
           <h2>{readoutTitle}</h2>
           <strong>{readoutStatus}</strong>
           <p>{readoutSummary}</p>
-          {activeCategory === "speech" && lingCellReadable && selectedLingCell.ability ? (
+          {activeCategory === "speech" && lingCellReadable && (selectedLingCell.ability || selectedLingCell.power) ? (
             <div className="ling-ability-brief">
-              <section>
-                <span>能力说明</span>
-                <p>{selectedLingCell.ability}</p>
-              </section>
+              {selectedLingCell.ability ? (
+                <section>
+                  <span>能力说明</span>
+                  <p>{selectedLingCell.ability}</p>
+                </section>
+              ) : null}
+              {selectedLingCell.power ? (
+                <section>
+                  <span>威力评估</span>
+                  <p>
+                    {selectedLingCell.power}
+                    {selectedLingScale
+                      ? ` NORMA序列阶梯：半径 ${selectedLingScale.radius} 米 / 稳定 ${selectedLingScale.duration} 秒 / 龙文优先级 ${selectedLingScale.priority}/10。`
+                      : ""}
+                  </p>
+                </section>
+              ) : null}
             </div>
           ) : null}
-          <div className="ling-readout-source">
-            <em>{activeCategory === "speech" ? selectedLingCell.axis : selectedRecord.king}</em>
-            <em>{activeCategory === "speech" ? selectedLingCell.tier : selectedRecord.source}</em>
-            <em>{activeCategory === "speech" ? `C-${selectedLingCell.clearance} / ${selectedLingCell.note}` : selectedRecord.containment}</em>
-          </div>
+          {activeCategory === "speech" ? (
+            <div className="ling-readout-source">
+              <em>{selectedLingCell.axis}</em>
+              <em>{selectedLingCell.tier}</em>
+              <em>C-{selectedLingCell.clearance} / {selectedLingCell.note}</em>
+            </div>
+          ) : (
+            <div className="ling-readout-source">
+              <em>{selectedRecord.king}</em>
+              <em>{selectedRecord.source}</em>
+              <em>{selectedRecord.containment}</em>
+            </div>
+          )}
           <strong>
             {activeCategory === "speech"
               ? lingCellReadable
@@ -7110,7 +7398,7 @@ function AlchemyProjectionVaultPanel({
           <p>
             {activeCategory === "speech"
               ? lingCellReadable
-                ? "当前仅开放能力摘要。完整声纹、领域参数与释放记录仍由冰窖封存。"
+                ? "当前仅开放能力摘要与威力评估。完整声纹、领域参数与释放记录仍由冰窖封存。"
                 : "索引开放。完整声纹、领域参数与释放记录仍需更高权限。NORMA 已记录专员访问请求。"
               : selectedReadable
                 ? selectedRecord.summary
@@ -7140,11 +7428,11 @@ function AlchemyProjectionVaultPanel({
               </div>
             </dl>
           ) : null}
-          <div>
+          {activeCategory !== "speech" ? <div>
             <em>{selectedRecord.king}</em>
             <em>{selectedRecord.source}</em>
             <em>{selectedRecord.containment}</em>
-          </div>
+          </div> : null}
         </aside>
       </div>
 

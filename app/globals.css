@@ -10536,6 +10536,7 @@ button:disabled:hover {
   min-height: 88px;
   padding: 8px 10px;
   border: 1px solid rgba(139, 182, 255, 0.24);
+  border-radius: 6px;
   color: rgba(232, 242, 255, 0.9);
   background:
     linear-gradient(145deg, rgba(10, 37, 78, 0.82), rgba(0, 8, 22, 0.96)),
@@ -10558,6 +10559,195 @@ button:disabled:hover {
   box-shadow: 0 0 14px rgba(2, 255, 246, 0.65);
 }
 
+.ling-matrix-cell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    linear-gradient(90deg, transparent 0 48%, rgba(255, 255, 255, 0.18) 50%, transparent 52%),
+    linear-gradient(0deg, transparent 0 48%, rgba(255, 255, 255, 0.08) 50%, transparent 52%);
+  mix-blend-mode: screen;
+}
+
+.ling-matrix-cell span::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  left: 10px;
+  height: 2px;
+  background: linear-gradient(90deg, currentColor, transparent);
+  opacity: 0.32;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.ling-matrix-cell.is-confirmed {
+  border-color: rgba(2, 255, 246, 0.42);
+  background:
+    radial-gradient(circle at 82% 18%, rgba(2, 255, 246, 0.16), transparent 30%),
+    linear-gradient(145deg, rgba(8, 52, 98, 0.92), rgba(0, 11, 28, 0.98)),
+    repeating-linear-gradient(135deg, rgba(2, 255, 246, 0.035) 0 8px, transparent 8px 18px);
+  box-shadow:
+    inset 0 0 18px rgba(2, 255, 246, 0.08),
+    0 0 14px rgba(2, 255, 246, 0.06);
+}
+
+.ling-matrix-cell.is-confirmed::before {
+  background: rgba(2, 255, 246, 0.96);
+  box-shadow:
+    0 0 12px rgba(2, 255, 246, 0.88),
+    0 0 24px rgba(2, 255, 246, 0.34);
+}
+
+.ling-matrix-cell.is-inferred {
+  border-style: dashed;
+  border-color: rgba(139, 182, 255, 0.22);
+  background:
+    radial-gradient(circle at 84% 16%, rgba(139, 182, 255, 0.09), transparent 30%),
+    repeating-linear-gradient(135deg, rgba(139, 182, 255, 0.03) 0 7px, rgba(0, 0, 0, 0.1) 7px 18px),
+    linear-gradient(145deg, rgba(3, 20, 44, 0.84), rgba(0, 7, 18, 0.98));
+}
+
+.ling-matrix-cell.is-inferred::before {
+  background: rgba(139, 182, 255, 0.42);
+  box-shadow: 0 0 10px rgba(139, 182, 255, 0.24);
+}
+
+.ling-matrix-cell.is-inferred strong {
+  color: rgba(210, 226, 255, 0.78);
+}
+
+.ling-matrix-cell.is-conflict {
+  border-color: rgba(255, 214, 108, 0.72);
+  background:
+    radial-gradient(circle at 82% 18%, rgba(255, 214, 108, 0.16), transparent 34%),
+    repeating-linear-gradient(135deg, rgba(255, 214, 108, 0.08) 0 8px, rgba(0, 0, 0, 0.16) 8px 18px),
+    linear-gradient(145deg, rgba(58, 42, 8, 0.74), rgba(0, 8, 18, 0.98));
+  box-shadow:
+    inset 0 0 24px rgba(255, 214, 108, 0.1),
+    0 0 18px rgba(255, 214, 108, 0.08);
+}
+
+.ling-matrix-cell.is-conflict::before {
+  background: rgba(255, 214, 108, 0.92);
+  box-shadow:
+    0 0 12px rgba(255, 214, 108, 0.72),
+    0 0 26px rgba(255, 214, 108, 0.28);
+}
+
+.ling-matrix-cell.rank-low {
+  opacity: 0.78;
+  filter: saturate(0.86);
+}
+
+.ling-matrix-cell.rank-mid {
+  opacity: 0.88;
+  border-color: rgba(92, 158, 255, 0.34);
+  box-shadow: inset 0 0 18px rgba(92, 158, 255, 0.08);
+}
+
+.ling-matrix-cell.rank-mid span {
+  color: rgba(112, 190, 255, 0.82);
+}
+
+.ling-matrix-cell.rank-domain {
+  border-color: rgba(77, 235, 255, 0.46);
+  background:
+    radial-gradient(circle at 82% 18%, rgba(77, 235, 255, 0.16), transparent 32%),
+    linear-gradient(145deg, rgba(5, 42, 72, 0.88), rgba(0, 8, 22, 0.98)),
+    repeating-linear-gradient(135deg, rgba(77, 235, 255, 0.04) 0 8px, transparent 8px 18px);
+  box-shadow:
+    inset 0 0 24px rgba(77, 235, 255, 0.1),
+    0 0 18px rgba(77, 235, 255, 0.08);
+}
+
+.ling-matrix-cell.rank-domain span {
+  color: rgba(116, 246, 255, 0.88);
+}
+
+.ling-matrix-cell.rank-domain::after {
+  opacity: 0.18;
+}
+
+.ling-matrix-cell.rank-danger {
+  border-color: rgba(255, 184, 80, 0.54);
+  background:
+    radial-gradient(circle at 82% 18%, rgba(255, 184, 80, 0.18), transparent 33%),
+    linear-gradient(145deg, rgba(56, 28, 8, 0.9), rgba(0, 7, 18, 0.99)),
+    repeating-linear-gradient(135deg, rgba(255, 184, 80, 0.052) 0 8px, transparent 8px 18px);
+  box-shadow:
+    inset 0 0 26px rgba(255, 184, 80, 0.12),
+    0 0 22px rgba(255, 108, 70, 0.1);
+}
+
+.ling-matrix-cell.rank-danger span {
+  color: rgba(255, 206, 118, 0.9);
+}
+
+.ling-matrix-cell.rank-danger::after {
+  opacity: 0.28;
+  animation: ling-cell-pulse 2400ms ease-in-out infinite, ling-cell-sweep 3600ms linear infinite;
+}
+
+.ling-matrix-cell.rank-forbidden {
+  border-style: solid;
+  border-color: rgba(255, 94, 82, 0.58);
+  background:
+    radial-gradient(circle at 82% 18%, rgba(255, 214, 108, 0.22), transparent 26%),
+    radial-gradient(circle at 18% 82%, rgba(255, 57, 82, 0.14), transparent 34%),
+    repeating-linear-gradient(135deg, rgba(255, 94, 82, 0.1) 0 8px, rgba(0, 0, 0, 0.24) 8px 18px),
+    linear-gradient(145deg, rgba(68, 12, 18, 0.78), rgba(0, 5, 14, 0.99));
+  box-shadow:
+    inset 0 0 30px rgba(255, 94, 82, 0.14),
+    0 0 26px rgba(255, 94, 82, 0.12);
+}
+
+.ling-matrix-cell.rank-forbidden span {
+  color: rgba(255, 214, 108, 0.96);
+}
+
+.ling-matrix-cell.rank-forbidden strong {
+  color: rgba(255, 246, 218, 0.98);
+  text-shadow:
+    0 0 10px rgba(255, 214, 108, 0.26),
+    0 0 20px rgba(255, 94, 82, 0.18);
+}
+
+.ling-matrix-cell.rank-forbidden::before {
+  background: rgba(255, 214, 108, 0.94);
+  box-shadow:
+    0 0 14px rgba(255, 214, 108, 0.84),
+    0 0 30px rgba(255, 94, 82, 0.44);
+}
+
+.ling-matrix-cell.rank-forbidden::after {
+  opacity: 0.44;
+  background:
+    linear-gradient(115deg, transparent 0 42%, rgba(255, 214, 108, 0.26) 48%, transparent 54%),
+    linear-gradient(90deg, rgba(255, 94, 82, 0.18), transparent 34%, rgba(255, 214, 108, 0.14));
+  animation: ling-cell-pulse 1800ms ease-in-out infinite, ling-cell-sweep 2800ms linear infinite;
+}
+
+@keyframes ling-cell-pulse {
+  0%, 100% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 0.44;
+  }
+}
+
+@keyframes ling-cell-sweep {
+  0% {
+    transform: translateX(-78%);
+  }
+  100% {
+    transform: translateX(78%);
+  }
+}
+
 .ling-matrix-cell:hover,
 .ling-matrix-cell.is-active {
   border-color: rgba(2, 255, 246, 0.78);
@@ -10567,6 +10757,39 @@ button:disabled:hover {
   box-shadow:
     0 0 0 1px rgba(2, 255, 246, 0.12) inset,
     0 0 28px rgba(2, 255, 246, 0.16);
+}
+
+.ling-matrix-cell.is-inferred:hover,
+.ling-matrix-cell.is-inferred.is-active {
+  border-color: rgba(139, 182, 255, 0.58);
+  background:
+    repeating-linear-gradient(135deg, rgba(139, 182, 255, 0.055) 0 7px, rgba(0, 0, 0, 0.1) 7px 18px),
+    linear-gradient(145deg, rgba(5, 30, 62, 0.9), rgba(0, 8, 20, 0.98));
+  box-shadow:
+    inset 0 0 22px rgba(139, 182, 255, 0.1),
+    0 0 22px rgba(139, 182, 255, 0.1);
+}
+
+.ling-matrix-cell.is-conflict:hover,
+.ling-matrix-cell.is-conflict.is-active {
+  border-color: rgba(255, 214, 108, 0.92);
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 214, 108, 0.11) 0 8px, rgba(0, 0, 0, 0.16) 8px 18px),
+    linear-gradient(145deg, rgba(74, 52, 10, 0.84), rgba(0, 8, 18, 0.98));
+  box-shadow:
+    inset 0 0 28px rgba(255, 214, 108, 0.14),
+    0 0 28px rgba(255, 214, 108, 0.16);
+}
+
+.ling-matrix-cell.rank-forbidden:hover,
+.ling-matrix-cell.rank-forbidden.is-active {
+  border-color: rgba(255, 94, 82, 0.86);
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 94, 82, 0.13) 0 8px, rgba(0, 0, 0, 0.24) 8px 18px),
+    linear-gradient(145deg, rgba(88, 14, 22, 0.88), rgba(0, 5, 14, 0.99));
+  box-shadow:
+    inset 0 0 34px rgba(255, 94, 82, 0.18),
+    0 0 34px rgba(255, 94, 82, 0.18);
 }
 
 .ling-matrix-cell.is-prime {
