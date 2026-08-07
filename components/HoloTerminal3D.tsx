@@ -11,7 +11,15 @@ import type { FeatureCollection } from "geojson";
 import evidencePacketsData from "@/data/evidence-packets.json";
 import normaLoreData from "@/data/norma-lore.json";
 import worldAtlas from "world-atlas/countries-50m.json";
-import type { AccessLog, AgentProfile } from "@/lib/agentProfile";
+import {
+  formatAccessLabel,
+  formatAccessRequirement,
+  formatAccessVerified,
+  formatAgentAuthorization,
+  getEffectiveAccess,
+  type AccessLog,
+  type AgentProfile
+} from "@/lib/agentProfile";
 import { fallbackNormaForecastSignals, type NormaForecastResponse } from "@/lib/normaForecast";
 
 type HoloModuleId =
@@ -107,8 +115,8 @@ const modules: HoloModule[] = [
     subtitle: "专员权限已接入，学院档案室处于全息展开状态",
     position: [0, 0.38, 0],
     color: "#d9c27a",
-    camera: [0, 1.55, 6.8],
-    target: [0, 0.18, 0],
+    camera: [0, 1.9, 8.95],
+    target: [0, 0.12, 0],
     mark: "S",
     lines: ["身份认证：已通过", "学院连接：在", "三部档案：已载入"]
   },
@@ -311,11 +319,11 @@ function formatEvidenceCount(count: number) {
 }
 
 function formatClearanceRequired(clearance: number) {
-  return `需C-${clearance} 权限`;
+  return formatAccessRequirement(clearance);
 }
 
 function formatDetailAccess(locked: boolean, clearance: number) {
-  return locked ? `完整研判需 C-${clearance}` : "完整研判开";
+  return locked ? `完整研判需 ${formatAccessLabel(clearance)}` : "完整研判开放";
 }
 
 function formatForecastDisplayStatus(status: string) {
@@ -478,7 +486,7 @@ const disasterForecastSignals: SurveillanceAnomaly[] = [
     tone: "#c95e4c",
     summary: "该风暴带出现逆常规路径迁移，并伴随高空电荷聚集。完整推断涉及天空与风之王高权限档案",
     norma: "当前权限不足时仅显示灾害索引。若信号持续增强，执行部会收到自动授权请求",
-    recommendation: "需要 CLEARANCE 3 后读取完整气象与龙王关联模型"
+    recommendation: "需要 A级血统复核后读取完整气象与龙王关联模型"
   }
 ];
 
@@ -3597,7 +3605,7 @@ function MissionOperationsPanel({
   const records = blueprint?.records ?? [];
   const [selectedMissionTitle, setSelectedMissionTitle] = useState(records[0]?.title ?? "");
   const selectedMission = records.find((record) => record.title === selectedMissionTitle) ?? records[0] ?? null;
-  const clearance = profile?.clearance ?? 1;
+  const clearance = getEffectiveAccess(profile);
   const readableCount = records.filter((record) => clearance >= getRequiredClearance("missions", record)).length;
   const sealedCount = records.length - readableCount;
   const monitorCount = records.filter((record) => getMissionMeta(record).reviewed.includes("监听")).length;
@@ -3616,8 +3624,8 @@ function MissionOperationsPanel({
 
       <div className="mission-ops-status" aria-label="执行部状态">
         <article>
-          <span>当前权限</span>
-          <strong>C-{clearance}</strong>
+          <span>当前授权</span>
+          <strong>{formatAccessLabel(clearance)}</strong>
         </article>
         <article>
           <span>可读行动</span>
@@ -3652,8 +3660,8 @@ function MissionOperationsPanel({
                     locked
                       ? {
                           ...record,
-                          status: `SEALED / CLEARANCE ${requiredClearance} REQUIRED`,
-                          detail: `NORMA 拒绝访问。该行动复盘需 CLEARANCE ${requiredClearance}，当前专员权限不足。`
+                          status: formatAccessRequirement(requiredClearance),
+                          detail: `NORMA 拒绝访问。该行动复盘需 ${formatAccessLabel(requiredClearance)}，当前专员授权不足。`
                         }
                       : record
                   );
@@ -3662,7 +3670,7 @@ function MissionOperationsPanel({
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <header>
                   <strong>{meta.code}</strong>
-                  <em>{locked ? `需要 C-${requiredClearance}` : record.status}</em>
+                  <em>{locked ? formatAccessRequirement(requiredClearance) : record.status}</em>
                 </header>
                 <h2>{record.title}</h2>
                 <div className="mission-card-meta">
@@ -3680,7 +3688,7 @@ function MissionOperationsPanel({
             <>
               <header>
                 <span>NORMA OPERATION SUMMARY</span>
-                <strong>{selectedLocked ? `需要 C-${selectedRequiredClearance} 权限` : "摘要开放"}</strong>
+                <strong>{selectedLocked ? formatAccessRequirement(selectedRequiredClearance) : "摘要开放"}</strong>
               </header>
               <h2>{selectedMission.title}</h2>
               <p>{selectedMission.detail}</p>
@@ -3728,7 +3736,7 @@ function MissionOperationsPanel({
                       action: "DENIED_ACCESS",
                       target: `${selectedMission.level} / ${selectedMission.title}`,
                       result: "DENIED",
-                      detail: `CLEARANCE ${selectedRequiredClearance} REQUIRED`
+                      detail: formatAccessRequirement(selectedRequiredClearance)
                     });
                     return;
                   }
@@ -3736,7 +3744,7 @@ function MissionOperationsPanel({
                     action: "ARCHIVE_ACCESS",
                     target: `${selectedMission.level} / ${selectedMission.title}`,
                     result: "ALLOWED",
-                    detail: `CLEARANCE ${clearance} VERIFIED`
+                    detail: formatAccessVerified(clearance)
                   });
                   onOpenDeepArchive(selectedMission.deepView, selectedMission);
                 }}
@@ -4476,7 +4484,7 @@ function SurveillanceGlobePanel({
   onSelectRecord: (record: ArchiveRecord) => void;
   onAccessLog?: (log: Omit<AccessLog, "id" | "at">) => void;
 }) {
-  const clearance = profile?.clearance ?? 1;
+  const clearance = getEffectiveAccess(profile);
   const [forecastSignals, setForecastSignals] = useState<SurveillanceAnomaly[]>(fallbackNormaForecastSignals);
   const [forecastSourceStatus, setForecastSourceStatus] = useState<NormaForecastResponse["sourceStatus"]>("FALLBACK");
   const [forecastUpdatedAt, setForecastUpdatedAt] = useState<string | null>(null);
@@ -4657,7 +4665,7 @@ function SurveillanceGlobePanel({
         title: `${item.code} / ${item.title}`,
         level: item.level,
         status: `索引开/ ${formatClearanceRequired(item.clearance)}`,
-        detail: `NORMA 已记录专员访问请求{item.title} 的完整异常记录需 C-${item.clearance}，当前仅开放灾害索引。`
+        detail: `NORMA 已记录专员访问请求。${item.title} 的完整异常记录需 ${formatAccessLabel(item.clearance)}，当前仅开放灾害索引。`
       });
       return;
     }
@@ -4669,7 +4677,7 @@ function SurveillanceGlobePanel({
       action: "EVIDENCE_QUERY",
       target: `SURVEILLANCE / ${item.code}`,
       result: "ALLOWED",
-      detail: `CLEARANCE ${clearance} VERIFIED`
+      detail: formatAccessVerified(clearance)
     });
     onSelectRecord({
       title: `${item.code} / ${item.title}`,
@@ -4755,7 +4763,7 @@ function SurveillanceGlobePanel({
         </div>
         <div className="surveillance-norma-note">
           <span>NORMA 判断</span>
-          <p>{selectedLocked ? `需CLEARANCE ${selectedAnomaly.clearance} 后读取完整判断。` : selectedAnomaly.norma}</p>
+          <p>{selectedLocked ? `需 ${formatAccessLabel(selectedAnomaly.clearance)} 后读取完整判断。` : selectedAnomaly.norma}</p>
         </div>
         <div className="surveillance-norma-note">
           <span>复核状</span>
@@ -4772,7 +4780,7 @@ function SurveillanceGlobePanel({
       aria-label="全球预警与异常投"     >
       <header className="surveillance-globe-header">
         <span>SURVEILLANCE GRID / DRAGON KING FORECAST</span>
-        <strong>ACTIVE {activeCount} / {forecastSourceLabel} / CLEARANCE {clearance}</strong>
+        <strong>ACTIVE {activeCount} / {forecastSourceLabel} / {formatAccessLabel(clearance)}</strong>
       </header>
       <div className="surveillance-globe-layout">
         <div className="surveillance-earth-wrap" aria-label="可拖动旋转的地球投影">
@@ -4981,7 +4989,7 @@ function SurveillanceGlobePanel({
               </div>
               <div className="surveillance-norma-note">
                 <span>NORMA 判断</span>
-                <p>{selectedLocked ? `需CLEARANCE ${selectedAnomaly.clearance} 后读取完整判断。` : selectedAnomaly.norma}</p>
+                <p>{selectedLocked ? `需 ${formatAccessLabel(selectedAnomaly.clearance)} 后读取完整判断。` : selectedAnomaly.norma}</p>
               </div>
               <div className="surveillance-norma-note">
                 <span>复核状</span>
@@ -5550,7 +5558,7 @@ function FieldEvidenceLibraryPanel({
   profile?: AgentProfile | null;
   onAccessLog?: (log: Omit<AccessLog, "id" | "at">) => void;
 }) {
-  const clearance = profile?.clearance ?? 1;
+  const clearance = getEffectiveAccess(profile);
   const [filter, setFilter] = useState<FieldEvidenceFilter>("all");
   const [view, setView] = useState<FieldEvidenceView>("chain");
   const [selectedEvidenceKey, setSelectedEvidenceKey] = useState("");
@@ -5613,7 +5621,7 @@ function FieldEvidenceLibraryPanel({
       action: locked ? "DENIED_ACCESS" : "EVIDENCE_QUERY",
       target: `FIELD EVIDENCE / ${item.id}`,
       result: locked ? "DENIED" : "ALLOWED",
-      detail: locked ? `需要 C-${item.clearance} 权限` : `C-${clearance} 权限已验证`
+      detail: locked ? formatAccessRequirement(item.clearance) : formatAccessVerified(clearance)
     });
   };
 
@@ -5629,7 +5637,7 @@ function FieldEvidenceLibraryPanel({
           <h1>现场证据库</h1>
           <p>仅收录执行部任务证据与实时预警证据。原文、人物与龙王历史档案不进入该库。</p>
         </div>
-        <strong>活动 {evidenceList.length} / 受限 {restrictedCount} / 权限 C-{clearance}</strong>
+        <strong>活动 {evidenceList.length} / 受限 {restrictedCount} / {formatAccessLabel(clearance)}</strong>
       </header>
 
       <div className="field-evidence-summary">
@@ -5693,7 +5701,7 @@ function FieldEvidenceLibraryPanel({
                   <h2>{chain.king}</h2>
                 </div>
                 <strong>
-                  聚合 / {chain.items.length} 条证据 / 最高 {chain.maxProbability}% / C-{chain.requiredClearance}
+                  聚合 / {chain.items.length} 条证据 / 最高 {chain.maxProbability}% / {formatAccessLabel(chain.requiredClearance)}
                 </strong>
               </header>
               <div className="field-evidence-chain-line" aria-hidden="true">
@@ -5717,7 +5725,7 @@ function FieldEvidenceLibraryPanel({
                     >
                       <span>{item.id}</span>
                       <strong>{item.title}</strong>
-                      <em>{locked ? `需要 C-${item.clearance} 权限` : `${item.probability}% / 可读`}</em>
+                      <em>{locked ? formatAccessRequirement(item.clearance) : `${item.probability}% / 可读`}</em>
                     </button>
                   );
                 })}
@@ -5727,7 +5735,7 @@ function FieldEvidenceLibraryPanel({
                   <em key={signal}>{signal}</em>
                 ))}
               </div>
-              {chain.lockedCount ? <p>NORMA 已开放摘要索引，完整异常记录仍需 C-{chain.requiredClearance} 权限复核。</p> : null}
+              {chain.lockedCount ? <p>NORMA 已开放摘要索引，完整异常记录仍需 {formatAccessLabel(chain.requiredClearance)} 复核。</p> : null}
             </article>
           ))}
         </div>
@@ -5748,7 +5756,7 @@ function FieldEvidenceLibraryPanel({
                 >
                   <header>
                     <span>{item.id}</span>
-                    <strong>{locked ? `需要 C-${item.clearance} 权限` : status}</strong>
+                    <strong>{locked ? formatAccessRequirement(item.clearance) : status}</strong>
                   </header>
                   <h2>{item.title}</h2>
                   <p>
@@ -5768,7 +5776,7 @@ function FieldEvidenceLibraryPanel({
               <>
                 <header>
                   <span>NORMA EVIDENCE DETAIL</span>
-                  <strong>{selectedLocked ? `需要 C-${selectedEvidence.clearance} 权限` : getEvidenceStatus(selectedEvidence, clearance)}</strong>
+                  <strong>{selectedLocked ? formatAccessRequirement(selectedEvidence.clearance) : getEvidenceStatus(selectedEvidence, clearance)}</strong>
                 </header>
                 <h2>{selectedEvidence.title}</h2>
                 <div className="field-evidence-detail-grid">
@@ -5797,7 +5805,7 @@ function FieldEvidenceLibraryPanel({
                 {selectedLocked ? (
                   <div className="field-evidence-denied">
                     <span>索引开放</span>
-                    <p>完整异常记录需 C-{selectedEvidence.clearance} 权限。已记录专员访问请求。</p>
+                    <p>完整异常记录需 {formatAccessLabel(selectedEvidence.clearance)}。已记录专员访问请求。</p>
                   </div>
                 ) : (
                   <>
@@ -5846,12 +5854,112 @@ type AlchemyRecord = {
   risk: string;
 };
 
+type SevenSinWeapon = {
+  id: string;
+  name: string;
+  code: string;
+  form: string;
+  clearance: AgentProfile["clearance"];
+  status: string;
+  danger: string;
+  target: string;
+  ability: string;
+  containment: string;
+};
+
 const alchemyCategories: Array<{ id: AlchemyCategoryId; label: string; note: string }> = [
   { id: "speech", label: "言灵序列", note: "龙文释放 / 血统响应" },
   { id: "runes", label: "龙文解析", note: "残缺译文 / 权限遮蔽" },
   { id: "weapons", label: "炼金武器", note: "冰窖封存 / 双钥授权" },
   { id: "artifacts", label: "炼金器物", note: "物证柜 / 王座残留" },
   { id: "fields", label: "炼金领域", note: "空间结构 / 活灵机关" }
+];
+
+const sevenSinsWeapons: SevenSinWeapon[] = [
+  {
+    id: "pride",
+    name: "傲慢",
+    code: "I / PRIDE",
+    form: "汉八方古剑",
+    clearance: 3,
+    status: "原文确认",
+    danger: "A+",
+    target: "尸守群 / 龙类近战目标",
+    ability: "原文记录楚子航曾从七宗罪刀匣中拔出傲慢，形制为汉八方古剑。七宗罪本为屠杀龙王而造，用它切割尸守如热刃入脂。",
+    containment: "冰窖封存。完整适配记录需 A级血统复核；战斗调用需执行部与装备部双重备案。"
+  },
+  {
+    id: "envy",
+    name: "妒忌",
+    code: "II / ENVY",
+    form: "曲刃短兵 / 待复核",
+    clearance: 3,
+    status: "索引开放",
+    danger: "A",
+    target: "鳞片缝隙 / 弱点穿刺",
+    ability: "原文确认妒忌属于七柄刀剑之一，但暂未检索到明确单独使用记录。NORMA 仅保留其作为七宗罪成员、审判罪名与屠龙武器组的索引。",
+    containment: "形制与活灵反应待复核。禁止把推定武器参数写入正式装备档案。"
+  },
+  {
+    id: "wrath",
+    name: "暴怒",
+    code: "III / WRATH",
+    form: "沉重斩马刀",
+    clearance: 3,
+    status: "战斗记录",
+    danger: "S",
+    target: "龙王诺顿 / 巨型龙类",
+    ability: "路鸣泽指出诺顿身上的罪是暴怒，建议路明非使用最重的暴怒。后续记录显示暴怒是沉重斩马刀，可苏醒为近六七米的齿刃，刀柄龙首睁眼并发出吼叫。",
+    containment: "最高风险活灵武器。接纳血统极少，曾被昂热与路鸣泽激发；离柜必须同步校长室授权。"
+  },
+  {
+    id: "sloth",
+    name: "懒惰",
+    code: "IV / SLOTH",
+    form: "重刃 / 待复核",
+    clearance: 3,
+    status: "索引开放",
+    danger: "A",
+    target: "重甲目标 / 王座护卫",
+    ability: "原文确认懒惰为七宗罪之一，但未在当前知识库中定位到独立战斗描写。页面仅显示其在刀剑组中的位置和审判名。",
+    containment: "完整形制、重量锁与活灵反应待复核；不得展示未确认战斗参数。"
+  },
+  {
+    id: "greed",
+    name: "贪婪",
+    code: "V / GREED",
+    form: "苏格兰直刃阔剑",
+    clearance: 4,
+    status: "战斗记录",
+    danger: "S",
+    target: "大型龙类 / 生命榨取",
+    ability: "路明非在夔门事件中误拔贪婪。日本篇记录补充其形似苏格兰直刃阔剑，是七宗罪中形制最大的两柄之一；又被称为吸噬之剑，可榨取伤者生命。",
+    containment: "S级血统或校长室授权复核。吸噬特性与生体样本接触记录遮蔽，使用后必须进入污染清除。"
+  },
+  {
+    id: "gluttony",
+    name: "饕餮",
+    code: "VI / GLUTTONY",
+    form: "亚特坎长刀",
+    clearance: 4,
+    status: "战斗记录",
+    danger: "S",
+    target: "巨型龙类 / 肢体破坏",
+    ability: "完整卷记录七柄武器名为傲慢、妒忌、暴怒、懒惰、贪婪、饕餮和色欲。副校长曾命路明非试拔第二柄饕餮；后续记录中饕餮与色欲同时出鞘，毁掉芬里厄前肢。",
+    containment: "S级血统或校长室授权复核。亚特坎长刀形制与龙王肢体破坏记录关联，完整适配过程不上屏。"
+  },
+  {
+    id: "lust",
+    name: "色欲",
+    code: "VII / LUST",
+    form: "弧刀 / 亚特坎线索待复核",
+    clearance: 4,
+    status: "索引开放",
+    danger: "A+",
+    target: "高速目标 / 侧翼切割",
+    ability: "原文确认色欲为七宗罪之一；日本篇提到七宗罪中存在弧刀和亚特坎长刀，但没有在当前检索结果中明确绑定到色欲。",
+    containment: "疑似弧刃形制需二次校勘。完整操控协议不上屏。"
+  }
 ];
 
 const alchemyRecords: AlchemyRecord[] = [
@@ -6009,7 +6117,7 @@ const alchemyRecords: AlchemyRecord[] = [
     status: "冰窖封存",
     king: "青铜与火之王",
     source: "青铜与火王座链",
-    containment: "仅显示索引。完整开启记录需 C-3。",
+    containment: "仅显示索引。完整开启记录需 A级血统复核。",
     summary: "金属匣将夔门计划从遗迹侦察推入炼金武器、王座处决和二次作战链路。",
     details: ["与七宗罪武器组互锁。", "开启、转运、授权均需留下 NORMA 记录。", "匣体不是包装，而是炼金物证的一部分。"],
     linked: ["七宗罪", "青铜计划", "冰窖"],
@@ -6043,7 +6151,7 @@ const alchemyRecords: AlchemyRecord[] = [
     source: "秦始皇陵相关炼金记录",
     containment: "历史摘要开放。领域破坏条件封存。",
     summary: "水银周流不是传说装饰，而是大型炼金领域的驱动结构，可作为空间级炼金术参照。",
-    details: ["用于说明炼金术不只是武器，也可以是场、空间和循环系统。", "完整破坏条件不在 C-2 权限显示。", "与尼伯龙根空间理解互为参照。"],
+    details: ["用于说明炼金术不只是武器，也可以是场、空间和循环系统。", "完整破坏条件不向 B级以下授权显示。", "与尼伯龙根空间理解互为参照。"],
     linked: ["水银", "炼金领域", "空间结构"],
     risk: "大型领域记录若公开，可能引发错误复现。"
   }
@@ -6265,18 +6373,6 @@ const lingSequenceCells: LingMatrixCell[] = [
     y: 0
   },
   {
-    id: "seq-pending-emperor",
-    code: "???",
-    title: "皇帝",
-    axis: "原文出现",
-    tier: "序列待校验",
-    clearance: 3,
-    recordId: "alc-speech-emperor",
-    note: "黑王最高言灵 / 序号未公开",
-    x: 0,
-    y: 0
-  },
-  {
     id: "seq-pending-oracle",
     code: "???",
     title: "神谕",
@@ -6424,6 +6520,17 @@ const lingSequenceCells: LingMatrixCell[] = [
 ];
 
 const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | "code" | "x" | "y">> = {
+  1: {
+    title: "皇帝",
+    axis: "权柄重排",
+    tier: "黑王统御言灵",
+    clearance: 4,
+    recordId: "alc-speech-emperor",
+    note: "尼德霍格 / 龙皇召唤",
+    ability: "黑王统御言灵，对臣服于尼德霍格的龙族血裔产生召唤、敬畏与压制反应。",
+    power: "王权级。不是常规战术言灵，而是血统、精神和秩序层面的统御指令。",
+    evidence: "原记录从 118 调整至序列 1，作为黑王血统召唤与服从结构的基础王权位点。"
+  },
   18: {
     title: "蛇",
     axis: "校勘录入",
@@ -6597,15 +6704,25 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     power: "禁忌级。理论上高于普通火系杀伤，完整效果保持绝密。",
     evidence: "曼施坦因说明烛龙序列号 114，龙王曾试图掌握它。"
   },
-  116: {
-    title: "湿婆业舞",
+  115: {
+    title: "归墟",
     axis: "绝密",
     tier: "灭世序列",
     clearance: 4,
-    note: "芬里厄 / 不可撤销",
-    ability: "灭世级不可撤销言灵，发动后连释放者也被卷入，理论上可毁灭城市级区域。",
-    power: "灭世级。启动后不可撤销，视为同归于尽式王座灾害。",
-    evidence: "原文称其与烛龙、莱茵一样不可撤销，并记载它曾毁灭古印度城市。"
+    note: "海洋与水之王 / 水系终极",
+    ability: "海洋与水之王专属的神级灭世言灵。领域内可掀起千米级巨浪，吞没沿海城市；同时能抽干局部空气形成真空杀场，并对领域内物质进行分解与重组。",
+    power: "灭世级。海洋环境中领域可持续扩张，综合破坏力接近湿婆业舞；陆地环境威力大幅衰减。释放会对施术者造成极强生命反噬，存在烧尽生命的高概率风险。",
+    evidence: "NORMA 将其归入 113 以上绝密序列，作为海洋与水之王权柄的终极言灵索引。完整释放条件、声纹与领域参数保持封存。"
+  },
+  116: {
+    title: "因陀罗之怒",
+    axis: "绝密",
+    tier: "灭世序列",
+    clearance: 4,
+    note: "天空与风之王 / 风雷终极",
+    ability: "天空与风之王专属的灭世级言灵，古称天绝罚雷。以使用者为中心形成高压电场，领域内布满球状闪电、百米级电刃与真空刃，形成切割与电击的双重杀场。",
+    power: "灭世级。完整释放时雷云可笼罩数千米范围，将范围内物质瞬间碳化，并干扰大范围通讯。普通混血种触及领域即死，强行释放会被雷电反噬烧毁。",
+    evidence: "NORMA 将其归入 113 以上绝密序列，作为天空与风之王权柄的终极言灵索引。完整释放记录与风雷双属性参数保持封存。"
   },
   117: {
     title: "神谕",
@@ -6619,15 +6736,14 @@ const confirmedLingSequenceByNumber: Record<number, Omit<LingMatrixCell, "id" | 
     evidence: "原文说神谕是唯一已知克制皇帝的言灵，白王曾对所有血裔使用。"
   },
   118: {
-    title: "皇帝",
-    axis: "权柄重排",
-    tier: "黑王最高言灵",
+    title: "神寂",
+    axis: "绝密",
+    tier: "黑王终极言灵",
     clearance: 4,
-    recordId: "alc-speech-emperor",
-    note: "尼德霍格 / 龙皇召唤",
-    ability: "黑王最高统御言灵，对臣服于尼德霍格的龙族血裔产生召唤与压制。",
-    power: "最高王权级。不是战术言灵，而是血统、精神和秩序层面的终极统御。",
-    evidence: "原文说皇帝是龙皇统治后代的最高言灵，后裔听到会感受召唤。"
+    note: "尼德霍格 / 绝对权柄",
+    ability: "黑王尼德霍格专属终极言灵，集杀戮与绝对封印于一体。可直接抹除其他龙王权柄，无视低阶言灵防御，并对初代种生命结构执行终结。",
+    power: "最高规则级。威力远超四大君主灭世言灵，没有已知手段可以打断完整释放过程；完整发动记录不存在，只保留秘党最高级别只言片语。",
+    evidence: "NORMA 将其归入言灵周期表最高序号 118，作为黑王绝对权柄的终端索引。完整声纹、领域模型与释放条件永久封存。"
   }
 };
 
@@ -6920,7 +7036,7 @@ function AlchemyVaultPanel({
   onSelectRecord: (record: ArchiveRecord) => void;
   onAccessLog?: (log: Omit<AccessLog, "id" | "at">) => void;
 }) {
-  const clearance = profile?.clearance ?? 1;
+  const clearance = getEffectiveAccess(profile);
   const [activeCategory, setActiveCategory] = useState<AlchemyCategoryId>("speech");
   const [selectedId, setSelectedId] = useState(alchemyRecords[0].id);
   const [selectedLingCellId, setSelectedLingCellId] = useState("seq-028");
@@ -6935,7 +7051,7 @@ function AlchemyVaultPanel({
     onSelectRecord({
       title: record.title,
       level: record.code,
-      status: clearance >= record.clearance ? record.status : `需要 C-${record.clearance} 权限`,
+      status: clearance >= record.clearance ? record.status : formatAccessRequirement(record.clearance),
       detail: clearance >= record.clearance ? record.summary : "NORMA 已开放索引，完整技术记录仍需更高权限复核。"
     });
     if (clearance < record.clearance) {
@@ -6943,7 +7059,7 @@ function AlchemyVaultPanel({
         action: "DENIED_ACCESS",
         target: `${record.code} / ${record.title}`,
         result: "DENIED",
-        detail: `CLEARANCE ${record.clearance} REQUIRED`
+        detail: formatAccessRequirement(record.clearance)
       });
     }
   }
@@ -6957,7 +7073,7 @@ function AlchemyVaultPanel({
           <p>NORMA 仅开放技术索引、封存状态、危险等级与授权路径。完整结构、咒文序列和武器参数保持遮蔽。</p>
         </div>
         <aside>
-          <strong>权限 C-{clearance}</strong>
+          <strong>{formatAccessLabel(clearance)}</strong>
           <em>{readableCount} 可读 / {sealedCount} 封存</em>
         </aside>
       </header>
@@ -7011,7 +7127,7 @@ function AlchemyVaultPanel({
               >
                 <header>
                   <span>{record.code}</span>
-                  <em>{readable ? record.status : `需要 C-${record.clearance}`}</em>
+                  <em>{readable ? record.status : formatAccessRequirement(record.clearance)}</em>
                 </header>
                 <h2>{record.title}</h2>
                 <p>{record.type}</p>
@@ -7023,7 +7139,7 @@ function AlchemyVaultPanel({
         <aside className={`alchemy-detail-console${selectedReadable ? "" : " is-restricted"}`}>
           <header>
             <span>NORMA ALCHEMY DETAIL</span>
-            <strong>{selectedReadable ? "摘要开放" : `需要 C-${selectedRecord.clearance} 权限`}</strong>
+            <strong>{selectedReadable ? "摘要开放" : formatAccessRequirement(selectedRecord.clearance)}</strong>
           </header>
           <h2>{selectedRecord.title}</h2>
           <div className="alchemy-detail-grid">
@@ -7075,14 +7191,17 @@ function AlchemyProjectionVaultPanel({
   onSelectRecord: (record: ArchiveRecord) => void;
   onAccessLog?: (log: Omit<AccessLog, "id" | "at">) => void;
 }) {
-  const clearance = profile?.clearance ?? 1;
+  const clearance = getEffectiveAccess(profile);
   const [activeCategory, setActiveCategory] = useState<AlchemyCategoryId>("speech");
   const [selectedId, setSelectedId] = useState(alchemyRecords[0].id);
   const [selectedLingCellId, setSelectedLingCellId] = useState("seq-028");
+  const [selectedSinId, setSelectedSinId] = useState(sevenSinsWeapons[0].id);
   const selectedRecord = alchemyRecords.find((record) => record.id === selectedId) ?? alchemyRecords[0];
   const categoryRecords = alchemyRecords.filter((record) => record.category === activeCategory);
   const selectedReadable = clearance >= selectedRecord.clearance;
   const readableCount = alchemyRecords.filter((record) => clearance >= record.clearance).length;
+  const selectedSinWeapon = sevenSinsWeapons.find((weapon) => weapon.id === selectedSinId) ?? sevenSinsWeapons[0];
+  const selectedSinReadable = clearance >= selectedSinWeapon.clearance;
   const selectedLing = lingMetrics[selectedRecord.id];
   const selectedLingCell =
     fullLingSequenceCells.find((cell) => cell.id === selectedLingCellId) ??
@@ -7100,15 +7219,21 @@ function AlchemyProjectionVaultPanel({
       ? selectedLingCellEmpty
         ? `序列 ${selectedLingCell.code} / 空位`
         : `言灵·${selectedLingCell.title}`
+      : activeCategory === "weapons"
+        ? `七宗罪·${selectedSinWeapon.name}`
       : selectedRecord.title;
   const readoutStatus =
     activeCategory === "speech"
       ? lingCellReadable
         ? `${selectedLingCell.tier} / ${selectedLingCell.axis}`
-        : `需要 C-${selectedLingCell.clearance} 权限`
+        : formatAccessRequirement(selectedLingCell.clearance)
+      : activeCategory === "weapons"
+        ? selectedSinReadable
+          ? `${selectedSinWeapon.status} / 危险 ${selectedSinWeapon.danger}`
+          : formatAccessRequirement(selectedSinWeapon.clearance)
       : selectedReadable
         ? selectedRecord.status
-        : `需要 C-${selectedRecord.clearance} 权限`;
+        : formatAccessRequirement(selectedRecord.clearance);
   const readoutSummary =
     activeCategory === "speech"
       ? selectedLingCellEmpty
@@ -7117,9 +7242,14 @@ function AlchemyProjectionVaultPanel({
           ? "索引开放。完整能力说明、声纹参数与释放记录仍需更高权限复核。"
         : selectedLingRecord?.summary ??
           `该言灵处于 ${selectedLingCell.tier} 序列。NORMA 已开放索引，完整声纹、领域参数与释放记录仍处于封存。`
+      : activeCategory === "weapons"
+        ? selectedSinReadable
+          ? selectedSinWeapon.ability
+          : "索引开放。单柄适配目标、铸造细节与调取协议仍需更高权限。NORMA 已记录武器柜访问请求。"
       : selectedReadable
         ? selectedRecord.summary
         : "索引开放。完整异常记录需更高权限。NORMA 已记录专员访问请求。";
+  const sevenSinsRecord = alchemyRecords.find((record) => record.id === "alc-weapon-seven-sins") ?? selectedRecord;
 
   function selectRecord(record: AlchemyRecord) {
     setSelectedId(record.id);
@@ -7128,7 +7258,7 @@ function AlchemyProjectionVaultPanel({
     onSelectRecord({
       title: record.title,
       level: record.code,
-      status: clearance >= record.clearance ? record.status : `需要 C-${record.clearance} 权限`,
+      status: clearance >= record.clearance ? record.status : formatAccessRequirement(record.clearance),
       detail: clearance >= record.clearance ? record.summary : "索引开放。完整炼金记录需更高权限复核。"
     });
     if (clearance < record.clearance) {
@@ -7136,7 +7266,7 @@ function AlchemyProjectionVaultPanel({
         action: "DENIED_ACCESS",
         target: `${record.code} / ${record.title}`,
         result: "DENIED",
-        detail: `CLEARANCE ${record.clearance} REQUIRED`
+        detail: formatAccessRequirement(record.clearance)
       });
     }
   }
@@ -7152,7 +7282,7 @@ function AlchemyProjectionVaultPanel({
     onSelectRecord({
       title: cell.title ? `言灵·${cell.title}` : `序列 ${cell.code} / 空位`,
       level: cell.code,
-      status: cell.title ? `需要 C-${cell.clearance} 权限` : "原文未公开",
+      status: cell.title ? formatAccessRequirement(cell.clearance) : "原文未公开",
       detail: cell.title
         ? "索引开放。完整声纹、领域参数与释放记录仍处于 NORMA 封存。"
         : "该序列暂无原文确认的言灵名称。NORMA 保留空位，不以推测资料填充。"
@@ -7162,7 +7292,7 @@ function AlchemyProjectionVaultPanel({
         action: "DENIED_ACCESS",
         target: `${cell.code} / 言灵·${cell.title}`,
         result: "DENIED",
-        detail: `CLEARANCE ${cell.clearance} REQUIRED`
+        detail: formatAccessRequirement(cell.clearance)
       });
     }
   }
@@ -7171,7 +7301,7 @@ function AlchemyProjectionVaultPanel({
     <section className="alchemy-projection-vault" style={{ "--holo-color": module.color } as CSSProperties} aria-label="炼金投影台">
       <header className="alchemy-projection-status">
         <span>ALCHEMY VAULT / ICE CELLAR LINK STABLE</span>
-        <strong>权限 C-{clearance}</strong>
+        <strong>{formatAccessLabel(clearance)}</strong>
         <em>{readableCount} 可读 / {alchemyRecords.length - readableCount} 封存 / BLUE PROTOCOL</em>
       </header>
 
@@ -7219,7 +7349,7 @@ function AlchemyProjectionVaultPanel({
                     >
                       <span>{cell.code}</span>
                       <strong>{cell.title}</strong>
-                      <em>{empty ? "空位" : readable ? cell.axis : `C-${cell.clearance}`}</em>
+                      <em>{empty ? "空位" : readable ? cell.axis : formatAccessLabel(cell.clearance)}</em>
                     </button>
                   );
                 })}
@@ -7265,29 +7395,37 @@ function AlchemyProjectionVaultPanel({
               <div className="coffer-lid">
                 <span>S20100144</span>
                 <strong>炼金刀剑 · 七宗罪</strong>
-                <em>双钥授权 / 冰窖顶级藏品</em>
+                <em>双钥授权 / 王座武器组 / 青铜与火之王</em>
               </div>
-              <div className="sin-slots">
-                {["傲慢", "妒忌", "暴怒", "懒惰", "贪婪", "饕餮", "色欲"].map((sin) => (
-                  <button
-                    key={sin}
-                    type="button"
-                    className={selectedRecord.id === "alc-weapon-seven-sins" ? "is-active" : ""}
-                    onClick={() => selectRecord(alchemyRecords.find((record) => record.id === "alc-weapon-seven-sins") ?? selectedRecord)}
-                  >
-                    <i />
-                    <span>{sin}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="weapon-side-list">
-                {categoryRecords
-                  .filter((record) => record.id !== "alc-weapon-seven-sins")
-                  .map((record) => (
-                    <button key={record.id} type="button" onClick={() => selectRecord(record)}>
-                      {record.title}
+              <div className="seven-sins-armory">
+                <div className="sin-slots" aria-label="七宗罪封存槽">
+                  {sevenSinsWeapons.map((weapon, index) => (
+                    <button
+                      key={weapon.id}
+                      type="button"
+                      className={`${selectedSinWeapon.id === weapon.id ? "is-active" : ""}${clearance >= weapon.clearance ? "" : " is-sealed"}`}
+                      onClick={() => {
+                        setSelectedSinId(weapon.id);
+                        selectRecord(sevenSinsRecord);
+                      }}
+                    >
+                      <i />
+                      <span>{String(index + 1).padStart(2, "0")}</span>
+                      <strong>{weapon.name}</strong>
+                      <em>{clearance >= weapon.clearance ? weapon.form : formatAccessRequirement(weapon.clearance)}</em>
                     </button>
                   ))}
+                </div>
+                <div className="sin-weapon-showcase" aria-label="选中武器投影">
+                  <span>{selectedSinWeapon.code}</span>
+                  <strong>{selectedSinWeapon.name}</strong>
+                  <em>{selectedSinWeapon.form}</em>
+                  <div className={`sin-blade blade-${selectedSinWeapon.id}`} aria-hidden="true">
+                    <i />
+                    <b />
+                  </div>
+                  <p>{selectedSinReadable ? selectedSinWeapon.ability : "权限不足，当前仅显示武器外形索引。"}</p>
+                </div>
               </div>
             </div>
           ) : null}
@@ -7319,7 +7457,7 @@ function AlchemyProjectionVaultPanel({
                   <i />
                   <span>{record.code}</span>
                   <strong>{record.title}</strong>
-                  <em>{clearance >= record.clearance ? record.status : `需要 C-${record.clearance}`}</em>
+                  <em>{clearance >= record.clearance ? record.status : formatAccessRequirement(record.clearance)}</em>
                 </button>
               ))}
             </div>
@@ -7373,11 +7511,38 @@ function AlchemyProjectionVaultPanel({
               ) : null}
             </div>
           ) : null}
+          {activeCategory === "weapons" ? (
+            <div className="weapon-readout-grid">
+              <div>
+                <span>武器形制</span>
+                <strong>{selectedSinWeapon.form}</strong>
+              </div>
+              <div>
+                <span>危险等级</span>
+                <strong>{selectedSinWeapon.danger}</strong>
+              </div>
+              <div>
+                <span>适配目标</span>
+                <strong>{selectedSinReadable ? selectedSinWeapon.target : "权限遮蔽"}</strong>
+              </div>
+              <div>
+                <span>封存协议</span>
+                <strong>{selectedSinWeapon.containment}</strong>
+              </div>
+              <p>{selectedSinReadable ? selectedSinWeapon.ability : "索引开放。完整武器参数、适配目标和调取协议仍需更高权限。"}</p>
+            </div>
+          ) : null}
           {activeCategory === "speech" ? (
             <div className="ling-readout-source">
               <em>{selectedLingCell.axis}</em>
               <em>{selectedLingCell.tier}</em>
-              <em>C-{selectedLingCell.clearance} / {selectedLingCell.note}</em>
+              <em>{formatAccessLabel(selectedLingCell.clearance)} / {selectedLingCell.note}</em>
+            </div>
+          ) : activeCategory === "weapons" ? (
+            <div className="ling-readout-source">
+              <em>{selectedSinWeapon.code}</em>
+              <em>{selectedSinWeapon.status}</em>
+              <em>{formatAccessLabel(selectedSinWeapon.clearance)} / {selectedSinWeapon.danger}</em>
             </div>
           ) : (
             <div className="ling-readout-source">
@@ -7390,16 +7555,24 @@ function AlchemyProjectionVaultPanel({
             {activeCategory === "speech"
               ? lingCellReadable
                 ? "能力摘要开放"
-                : `需要 C-${selectedLingCell.clearance} 权限`
+                : formatAccessRequirement(selectedLingCell.clearance)
+              : activeCategory === "weapons"
+                ? selectedSinReadable
+                  ? "单柄摘要开放"
+                  : formatAccessRequirement(selectedSinWeapon.clearance)
               : selectedReadable
                 ? selectedRecord.status
-                : `需要 C-${selectedRecord.clearance} 权限`}
+                : formatAccessRequirement(selectedRecord.clearance)}
           </strong>
           <p>
             {activeCategory === "speech"
               ? lingCellReadable
                 ? "当前仅开放能力摘要与威力评估。完整声纹、领域参数与释放记录仍由冰窖封存。"
                 : "索引开放。完整声纹、领域参数与释放记录仍需更高权限。NORMA 已记录专员访问请求。"
+              : activeCategory === "weapons"
+                ? selectedSinReadable
+                  ? "当前仅开放单柄摘要。完整铸造参数、血统适配和调取流程仍由冰窖封存。"
+                  : "索引开放。单柄参数与调取协议仍需更高权限。NORMA 已记录武器柜访问请求。"
               : selectedReadable
                 ? selectedRecord.summary
                 : "索引开放。完整异常记录需更高权限。NORMA 已记录专员访问请求。"}
@@ -7428,7 +7601,7 @@ function AlchemyProjectionVaultPanel({
               </div>
             </dl>
           ) : null}
-          {activeCategory !== "speech" ? <div>
+          {activeCategory !== "speech" && activeCategory !== "weapons" ? <div>
             <em>{selectedRecord.king}</em>
             <em>{selectedRecord.source}</em>
             <em>{selectedRecord.containment}</em>
@@ -7520,6 +7693,7 @@ function ArchivePanel({
     const missionScores = Object.values(profile.missionScores);
     const reviewedArchives = profile.reviewedArchives ?? [];
     const accessLogs = profile.accessLogs ?? [];
+    const assessmentScore = Math.floor(profile.bloodAssessment.percentile / 100);
 
     return (
       <section
@@ -7531,28 +7705,28 @@ function ArchivePanel({
         <span>AGENT DOSSIER / NORMA INTERNAL</span>
         <strong>{profile.bloodRank}</strong>
         <h1>{profile.name}</h1>
-        <p>{profile.agentId} / {profile.department} / CLEARANCE {profile.clearance}</p>
+        <p>{profile.agentId} / {profile.department} / {formatAgentAuthorization(profile)}</p>
         <div className="archive-metrics">
-          <span>{profile.completedMissions.length} MISSION RECORDED</span>
-          <span>{reviewedArchives.length} ARCHIVE REVIEWED</span>
-          <span>BLOOD RANK {profile.bloodRank}</span>
+          <span>{profile.completedMissions.length} 条任务记录</span>
+          <span>{reviewedArchives.length} 份档案审阅</span>
+          <span>{profile.bloodRank}级血统 / 3E 初筛 {assessmentScore}%</span>
         </div>
         <div className="agent-inline-records">
           <article>
-            <span>MISSION RECORDS</span>
+            <span>任务复盘</span>
             {missionScores.length ? (
               missionScores.map((score) => (
-                <em key={score.missionId}>MISSION-S / 夔门计划复盘 / RATING {score.rating} / SCORE {score.total}</em>
+                <em key={score.missionId}>MISSION-S / 夔门计划复盘 / 任务评定 {score.rating} / 总分 {score.total}</em>
               ))
             ) : (
               <em>暂无执行部复盘记</em>
             )}
           </article>
           <article>
-            <span>ARCHIVE REVIEWS</span>
+            <span>档案审阅</span>
             {reviewedArchives.length ? (
               reviewedArchives.map((archiveId) => (
-                <em key={archiveId}>{archiveId === "archive-bronze-fire" ? "KING-01 / 青铜与火之王初级档案" : archiveId} / REVIEWED</em>
+                <em key={archiveId}>{archiveId === "archive-bronze-fire" ? "KING-01 / 青铜与火之王初级档案" : archiveId} / 已审阅</em>
               ))
             ) : (
               <em>暂无档案审阅记录</em>
@@ -7560,10 +7734,10 @@ function ArchivePanel({
           </article>
           <article>
             <span>NORMA NOTE</span>
-            <em>该专员已完成基础王座级风险复盘。当前无强制派遣指令</em>
+            <em>血统评级来自 3E 初筛建档。任务评定只影响授权范围，不直接改变血统等级。</em>
           </article>
           <article>
-            <span>ACCESS LOG</span>
+            <span>访问审计</span>
             {accessLogs.length ? (
               accessLogs.slice(0, 5).map((log) => (
                 <em key={log.id}>{log.action} / {log.target} / {log.result}</em>
@@ -7609,7 +7783,7 @@ function ArchivePanel({
           {blueprint.records.map((record) => {
             const requiredArchiveId = getRequiredArchiveId(module.id, record);
             const requiredClearance = getRequiredClearance(module.id, record);
-            const hasClearance = (profile?.clearance ?? 1) >= requiredClearance;
+            const hasClearance = getEffectiveAccess(profile) >= requiredClearance;
             const unlocked = !requiredArchiveId || Boolean(profile?.unlockedArchives.includes(requiredArchiveId));
             const locked = Boolean(record.deepView && (!unlocked || !hasClearance));
 
@@ -7624,14 +7798,15 @@ function ArchivePanel({
                       action: "DENIED_ACCESS",
                       target: `${record.level} / ${record.title}`,
                       result: "DENIED",
-                      detail: `CLEARANCE ${requiredClearance} REQUIRED`
+                      detail: formatAccessRequirement(requiredClearance)
                     });
                     onSelectRecord({
                       ...record,
-                      status: `SEALED / CLEARANCE ${requiredClearance} REQUIRED`,
+                      status: formatAccessRequirement(requiredClearance),
                       detail:
                         requiredArchiveId === "archive-bronze-fire" && !unlocked
-                          ? "NORMA 拒绝访问。完MISSION-S / 夔门计划复盘后，KING-01 初级档案将开放"                           : `NORMA 拒绝访问。该档案需CLEARANCE ${requiredClearance}，当前专员权限不足。`
+                          ? "NORMA 拒绝访问。完成 MISSION-S / 夔门计划复盘后，KING-01 初级档案将开放"
+                          : `NORMA 拒绝访问。该档案需 ${formatAccessLabel(requiredClearance)}，当前专员授权不足。`
                     });
                     return;
                   }
@@ -7640,7 +7815,7 @@ function ArchivePanel({
                       action: "ARCHIVE_ACCESS",
                       target: `${record.level} / ${record.title}`,
                       result: "ALLOWED",
-                      detail: `CLEARANCE ${profile?.clearance ?? 1} VERIFIED`
+                      detail: formatAccessVerified(getEffectiveAccess(profile))
                     });
                     onOpenDeepArchive(record.deepView, record);
                     return;
@@ -7701,6 +7876,7 @@ function OverviewPanel({
   const booksLabel = lore.books.map((book) => `ⅠⅡⅢⅣⅤ`[book.book_index - 1] ?? String(book.book_index)).join(" / ");
   const missionCount = profile?.completedMissions.length ?? 0;
   const latestScore = profile ? Object.values(profile.missionScores).at(-1) : null;
+  const accessLabel = formatAccessLabel(getEffectiveAccess(profile));
   const kingReviewed = Boolean(profile?.reviewedArchives?.includes("archive-bronze-fire"));
   const directiveTitle = !operationCompleted
     ? "MISSION-S / 夔门计划复盘"
@@ -7722,10 +7898,10 @@ function OverviewPanel({
         <div className="archive-metrics overview-metrics">
           <span>{booksLabel} 已接</span>
           <span>{totalEvidence} 条证</span>
-          <span>ACCESS LEVEL {profile?.clearance ?? "S"}</span>
+          <span>{accessLabel}</span>
           {profile ? <span>{profile.agentId}</span> : null}
-          {profile ? <span>{missionCount} MISSION RECORDED</span> : null}
-          {latestScore ? <span>LAST RATING {latestScore.rating}</span> : null}
+          {profile ? <span>{missionCount} 条任务记录</span> : null}
+          {latestScore ? <span>最近任务评定 {latestScore.rating}</span> : null}
         </div>
         {onStartOperation && !kingReviewed ? (
           <div className={`overview-operation-directive${operationCompleted ? " is-archived" : ""}`}>
@@ -7733,7 +7909,7 @@ function OverviewPanel({
             <h2>{directiveTitle}</h2>
             <p>{directiveCopy}</p>
             {operationCompleted && profile ? (
-              <em className="overview-system-log">[NORMA] {profile.agentId} / CLEARANCE {profile.clearance} / KING-01 OPEN</em>
+              <em className="overview-system-log">[NORMA] {profile.agentId} / {formatAgentAuthorization(profile)} / KING-01 OPEN</em>
             ) : null}
             <button type="button" onClick={primaryAction}>
               {primaryLabel}
@@ -7752,7 +7928,7 @@ function OverviewPanel({
               <span>NORMA WORK DESK</span>
               <h2>通讯频道已建</h2>
               {profile ? (
-                <em className="overview-system-log">[NORMA] {profile.agentId} / CLEARANCE {profile.clearance} / WORK DESK STABLE</em>
+                <em className="overview-system-log">[NORMA] {profile.agentId} / {formatAgentAuthorization(profile)} / WORK DESK STABLE</em>
               ) : null}
               <div className="norma-dialogue" aria-label="NORMA 通讯">
                 <p>
@@ -7807,6 +7983,38 @@ function MissionLaunchOverlay({ launch }: { launch: MissionLaunchState }) {
   );
 }
 
+function NormaAmbientCaption({
+  interfaceName,
+  messages
+}: {
+  interfaceName: string;
+  messages: string[];
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const messageKey = messages.join("|");
+  const activeMessage = messages[activeIndex] ?? messages[0] ?? "链路稳定。";
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [messageKey]);
+
+  useEffect(() => {
+    if (messages.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setActiveIndex((index) => (index + 1) % messages.length);
+    }, 6800);
+
+    return () => window.clearInterval(timer);
+  }, [messageKey, messages.length]);
+
+  return (
+    <aside className="norma-ambient-caption" aria-live="polite" aria-label={`${interfaceName} 主动提示`}>
+      <span>{interfaceName}</span>
+      <p key={`${activeIndex}-${activeMessage}`}>{activeMessage}</p>
+    </aside>
+  );
+}
+
 export default function HoloTerminal3D({
   agentName = "未知专员",
   profile,
@@ -7836,6 +8044,87 @@ export default function HoloTerminal3D({
   const coreName = isFinger ? "EVA CORE" : "NORMA CORE";
   const terminalMode = isFinger ? "eva" : "norma";
   const inDeepArchive = activeDeepArchive !== null;
+  const reviewedKing = Boolean(profile?.reviewedArchives?.includes("archive-bronze-fire"));
+  const currentAccessLabel = formatAccessLabel(getEffectiveAccess(profile));
+  const normaAmbientMessages = (() => {
+    if (missionLaunch) return [`正在装载${missionLaunch.title}。执行部行动坐标已锁定。`];
+    if (activePreset === "overview") {
+      if (!operationCompleted) {
+        return [
+          `欢迎回来，${agentName}专员。血统校验完成，${currentAccessLabel}接入稳定。`,
+          "MISSION-S 复盘仍在等待你的判断，我已为你保留现场证据链。",
+          `当前授权为${currentAccessLabel}。完整王座档案将在复盘后开放。`,
+          "我会记录你的判断过程。请把它当作执行部工作，而不是答题。"
+        ];
+      }
+      if (!reviewedKing) {
+        return [
+          `欢迎回来，${agentName}。夔门计划复盘已归档。`,
+          "KING-01 初级档案访问权限已经打开，建议完成档案复核。",
+          "建议审阅青铜与火之王档案。该记录会写入你的专员履历。",
+          "当前无强制派遣指令。你可以先完成档案复核。"
+        ];
+      }
+      return [
+        `欢迎回来，${agentName}专员。血统校验完成，${currentAccessLabel}接入稳定。`,
+        "今日无强制任务。预警、证据库与执行部旁路监听保持在线。",
+        `KING-01 初级审阅已记录。你的当前授权仍为${currentAccessLabel}。`,
+        "北京尼伯龙根异常仍处于旁路监听，尚未生成执行部强制任务。",
+        "我会在异常概率越过阈值时打断当前界面。"
+      ];
+    }
+    if (activePreset === "surveillance") {
+      return [
+        "全球灾害源正在投影。请注意，概率不等于复苏确认。",
+        "我只进行征兆关联，不判定龙王已经出现。",
+        "点击异常记录后，地球会定位到对应坐标。"
+      ];
+    }
+    if (activePreset === "evidence") {
+      return [
+        "这里只收录现场证据、实时灾害证据与执行部证据。",
+        "原文档案、人物档案与龙王历史记录不进入该证据库。",
+        "权限不足的记录会保留索引，完整异常需更高等级复核。"
+      ];
+    }
+    if (activePreset === "missions") {
+      return [
+        "执行部记录以权限为准。访问意图已记录。",
+        "该区域只开放行动摘要、权限状态与复盘入口。",
+        "未形成强制任务的异常不会被标记为主线。"
+      ];
+    }
+    if (activePreset === "kings") {
+      return [
+        "龙王档案只开放索引与初级摘要。深层节点需要额外授权。",
+        "请从证据链进入档案，不要把传说当作结论。",
+        "王座档案访问会同步写入专员履历。"
+      ];
+    }
+    if (activePreset === "alchemy") {
+      return [
+        "炼金封存层仅开放技术索引。完整参数已遮蔽。",
+        "言灵、龙文、武器和器物记录均以权限与原文校勘为准。",
+        "未经授权的封存物不会显示完整调取协议。"
+      ];
+    }
+    if (activePreset === "identity") {
+      return [
+        "专员履历面板已打开。任务评级、权限变更和访问记录在此归档。",
+        "履历不是荣誉墙，而是学院判断你是否可信的依据。"
+      ];
+    }
+    if (activePreset === "academy") {
+      return [
+        "学院系统连接稳定。教学、门禁与内部规程保持只读状态。",
+        "学生权限与专员权限并不等价。"
+      ];
+    }
+    return [
+      `${activeModule.label} 已接入。`,
+      "我会根据当前权限筛去不可读记录。"
+    ];
+  })();
   const openKingArchive = () => {
     setSelectedRecord(null);
     setActivePreset("kings");
@@ -8021,6 +8310,7 @@ export default function HoloTerminal3D({
               </button>
             ))}
           </div>
+          <NormaAmbientCaption interfaceName={interfaceName} messages={normaAmbientMessages} />
         </>
       )}
       {activePreset !== "overview" && !inDeepArchive ? (

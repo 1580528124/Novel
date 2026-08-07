@@ -1,35 +1,32 @@
 "use client";
 
-import { MouseEvent, ReactNode, useRef, useState } from "react";
+import { ReactNode, useRef, useState } from "react";
 
 type Ripple = {
   id: number;
-  x: number;
-  y: number;
 };
 
 export default function GoldenRippleButton({
   children,
-  onClick
+  onClick,
+  disabled = false
 }: {
   children: ReactNode;
   onClick?: () => void;
+  disabled?: boolean;
 }) {
   const [ripples, setRipples] = useState<Ripple[]>([]);
   const [struck, setStruck] = useState(false);
   const nextId = useRef(0);
 
-  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
+  const handleClick = () => {
+    if (disabled) return;
+
     const id = nextId.current;
     nextId.current += 1;
     setRipples((current) => [
       ...current,
-      {
-        id,
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top
-      }
+      { id }
     ]);
     setStruck(true);
     window.setTimeout(() => setStruck(false), 260);
@@ -40,14 +37,15 @@ export default function GoldenRippleButton({
   };
 
   return (
-    <button type="button" className={`golden-ripple-button${struck ? " is-struck" : ""}`} onClick={handleClick}>
+    <button
+      type="button"
+      className={`golden-ripple-button${struck ? " is-struck" : ""}`}
+      onClick={handleClick}
+      disabled={disabled}
+    >
       {children}
       {ripples.map((ripple) => (
-        <span
-          key={ripple.id}
-          className="golden-ripple"
-          style={{ left: ripple.x, top: ripple.y }}
-        />
+        <span key={ripple.id} className="golden-ripple" />
       ))}
     </button>
   );

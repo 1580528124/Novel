@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AuthAnimation from "@/components/AuthAnimation";
 import DragonScaleBackground from "@/components/DragonScaleBackground";
 import GoldenRippleButton from "@/components/GoldenRippleButton";
@@ -11,26 +11,219 @@ import SGradeBadge from "@/components/SGradeBadge";
 import evidencePacketsData from "@/data/evidence-packets.json";
 import operationsData from "@/data/operations.json";
 import {
+  validateAgentName,
+  validateCredentials,
+  validatePasscodeConfirmation
+} from "@/lib/authValidation";
+import {
+  clearAuthSession,
   completeMission,
-  createAgentProfile,
-  loadAgentProfile,
   recordAccessLog,
   reviewArchive,
-  saveAgentProfile,
-  touchAgentProfile,
+  type AgentAccountSession,
   type AgentProfile,
   type MissionScore
 } from "@/lib/agentProfile";
+import {
+  identifyRemoteAccount,
+  loadRemoteSession,
+  logoutRemoteAccount,
+  registerRemoteAccount,
+  updateRemoteProfile,
+  warmupRemoteAuth
+} from "@/lib/remoteAgentAuth";
 import type { EvidencePacket } from "@/components/EvidencePacketViewer";
 
-function AuthScreen({ onEnter }: { onEnter: (agentName: string) => void }) {
+type AuthMessageTone = "idle" | "error" | "success";
+
+function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => void }) {
   const [connecting, setConnecting] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authStep, setAuthStep] = useState<"credentials" | "dossier">("credentials");
+  const [loginId, setLoginId] = useState("");
+  const [passcode, setPasscode] = useState("");
+  const [passcodeConfirmation, setPasscodeConfirmation] = useState("");
   const [agentName, setAgentName] = useState("");
-  const displayName = agentName.trim() || "未知专员";
+  const [pendingAccount, setPendingAccount] = useState<AgentAccountSession | null>(null);
+  const [authTransition, setAuthTransition] = useState<"idle" | "registering">("idle");
+  const [authMessage, setAuthMessage] = useState("等待专员身份签名");
+  const [authMessageTone, setAuthMessageTone] = useState<AuthMessageTone>("idle");
+  const [authBusy, setAuthBusy] = useState(false);
+  const displayName = agentName.trim() || loginId.trim() || "未知专员";
+
+  const setFeedback = (message: string, tone: AuthMessageTone = "idle") => {
+    setAuthMessage(message);
+    setAuthMessageTone(tone);
+  };
+
+  useEffect(() => {
+    void warmupRemoteAuth();
+  }, []);
 
   if (connecting) {
-    return <AuthAnimation userName={displayName} userId={displayName} onComplete={() => onEnter(displayName)} />;
+    return (
+      <AuthAnimation
+        userName={pendingAccount?.profile.name ?? displayName}
+        userId={pendingAccount?.profile.agentId ?? displayName}
+        targetBloodRank={pendingAccount?.profile.bloodRank ?? "C"}
+        ready={authTransition !== "registering" || Boolean(pendingAccount)}
+        scanLabel={authTransition === "registering" ? "专员档案写入" : "执行部档案编号"}
+        scanStatus={authTransition === "registering" ? "正在建立数据库索引 / 等待 NORMA 写入确认" : "正在读取身份签名"}
+        onComplete={() => {
+          if (pendingAccount) onEnter(pendingAccount);
+        }}
+      />
+    );
+  }
+
+  const submitCredentials = async () => {
+    if (authBusy) return;
+
+    const validationError =
+      authMode === "register"
+        ? validateCredentials(loginId, passcode) ?? validatePasscodeConfirmation(passcode, passcodeConfirmation)
+        : validateCredentials(loginId, passcode);
+    if (validationError) {
+      setFeedback(validationError, "error");
+      return;
+    }
+
+    if (authMode === "register") {
+      setFeedback("本地校验通过。请填写专员名称，完成卡塞尔建档。", "success");
+      setAuthStep("dossier");
+      return;
+    }
+
+    setAuthBusy(true);
+    setFeedback("正在校验身份密钥");
+    const result = await (async () => {
+      try {
+        return await identifyRemoteAccount(loginId, passcode);
+      } catch (error) {
+        return {
+          ok: false as const,
+          reason:
+            error instanceof DOMException && error.name === "AbortError"
+              ? "NORMA 数据库响应超时，请确认服务仍在线。"
+              : "NORMA 数据库连接失败，请确认 Postgres 与 DATABASE_URL。"
+        };
+      }
+    })();
+    setAuthBusy(false);
+
+    if (!result.ok) {
+      setFeedback(result.reason, "error");
+      return;
+    }
+
+    if (!result.exists) {
+      setFeedback("未检索到该登录代号，请切换至专员建档。", "error");
+      return;
+    }
+
+    setPendingAccount(result.account);
+    setConnecting(true);
+  };
+
+  const submitDossier = async () => {
+    if (authBusy) return;
+
+    const validationError = validateCredentials(loginId, passcode) ?? validateAgentName(agentName);
+    if (validationError) {
+      setFeedback(validationError, "error");
+      return;
+    }
+
+    setAuthTransition("registering");
+    setPendingAccount(null);
+    setConnecting(true);
+    setAuthBusy(true);
+    setFeedback("正在建立专员档案");
+    const result = await (async () => {
+      try {
+        return await registerRemoteAccount(loginId, passcode, agentName);
+      } catch (error) {
+        return {
+          ok: false as const,
+          reason:
+            error instanceof DOMException && error.name === "AbortError"
+              ? "NORMA 数据库响应超时，请确认服务仍在线。"
+              : "NORMA 数据库连接失败，请确认 Postgres 与 DATABASE_URL。"
+        };
+      }
+    })();
+    setAuthBusy(false);
+
+    if (!result.ok) {
+      setConnecting(false);
+      setAuthTransition("idle");
+      setFeedback(result.reason, "error");
+      return;
+    }
+
+    setAuthTransition("idle");
+    setPendingAccount(result.account);
+  };
+
+  if (authStep === "dossier") {
+    return (
+      <main className={`norma-auth auth-ritual-screen${focused ? " is-gold-glow" : ""}`}>
+        <DragonScaleBackground />
+        <div className="auth-eva-word" aria-hidden="true">
+          CASSELL
+        </div>
+        <div className="auth-corner-mark" aria-hidden="true">
+          <span>NORMA</span>
+          <small>卡塞尔全息终端</small>
+        </div>
+        <div className="auth-college-sigil" aria-hidden="true">
+          <span />
+        </div>
+        <section className="auth-identity-gate auth-dossier-gate">
+          <div className="auth-ritual-light" aria-hidden="true" />
+          <div className="auth-protocol">专员建档协议已启动</div>
+          <SGradeBadge variant="emblem" />
+          <div className="auth-credential auth-input-row">
+            <label htmlFor="agent-name">专员</label>
+            <input
+              id="agent-name"
+              value={agentName}
+              onChange={(event) => setAgentName(event.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void submitDossier();
+              }}
+            />
+            <span className="auth-focus-shock" aria-hidden="true" />
+          </div>
+          <div className={`auth-feedback is-${authMessageTone}`}>{authMessage}</div>
+          <div className="auth-grade-row">
+            <GoldenRippleButton disabled={authBusy} onClick={() => void submitDossier()}>
+              {authBusy ? "建档中" : "进入卡塞尔"}
+            </GoldenRippleButton>
+          </div>
+          <button
+            type="button"
+            className="auth-back-button"
+            onClick={() => {
+              setAuthStep("credentials");
+              setFeedback("等待专员身份签名");
+            }}
+          >
+            返回身份入口
+          </button>
+          <div className="auth-pending">REGISTRY PENDING · 等待建档</div>
+        </section>
+        <div className="auth-protocol-mark" aria-hidden="true">
+          CASSELL COLLEGE · TERMINAL PROTOCOL v4.2.7
+        </div>
+        <div className="auth-latin-mark" aria-hidden="true">
+          IN SOMNIS VERITAS
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -49,27 +242,82 @@ function AuthScreen({ onEnter }: { onEnter: (agentName: string) => void }) {
       <section className="auth-identity-gate">
         <div className="auth-ritual-light" aria-hidden="true" />
         <div className="auth-protocol">身份验证协议已启动</div>
-        <p className="auth-waiting">正在等待专员身份签名</p>
+        <p className="auth-waiting">登录代号需要 6-14 位。</p>
         <SGradeBadge variant="emblem" />
         <div className="auth-credential auth-input-row">
-          <label htmlFor="agent-name">专员</label>
+          <label htmlFor="login-id">代号</label>
           <input
-            id="agent-name"
-            value={agentName}
-            onChange={(event) => setAgentName(event.target.value)}
+            id="login-id"
+            value={loginId}
+            onChange={(event) => setLoginId(event.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
           />
           <span className="auth-focus-shock" aria-hidden="true" />
         </div>
-        <div className="auth-grade-row">
-          <div>
-            <span>血统等级</span>
-            <strong>未知</strong>
-          </div>
-          <GoldenRippleButton onClick={() => setConnecting(true)}>进入卡塞尔</GoldenRippleButton>
+        <div className="auth-credential auth-input-row">
+          <label htmlFor="passcode">密钥</label>
+          <input
+            id="passcode"
+            type="password"
+            value={passcode}
+            onChange={(event) => setPasscode(event.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") void submitCredentials();
+            }}
+          />
+          <span className="auth-focus-shock" aria-hidden="true" />
         </div>
-        <div className="auth-pending">ACCESS PENDING · 等待授权</div>
+        {authMode === "register" ? (
+          <div className="auth-credential auth-input-row">
+            <label htmlFor="passcode-confirmation">确认密钥</label>
+            <input
+              id="passcode-confirmation"
+              type="password"
+              value={passcodeConfirmation}
+              onChange={(event) => setPasscodeConfirmation(event.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void submitCredentials();
+              }}
+            />
+            <span className="auth-focus-shock" aria-hidden="true" />
+          </div>
+        ) : null}
+        <div className="auth-mode-switch" aria-label="认证阶段">
+          <button
+            type="button"
+            className={authMode === "login" ? "is-active" : ""}
+            onClick={() => {
+              setAuthMode("login");
+              setPasscodeConfirmation("");
+              setFeedback("等待专员身份签名");
+            }}
+          >
+            身份校验
+          </button>
+          <button
+            type="button"
+            className={authMode === "register" ? "is-active" : ""}
+            onClick={() => {
+              setAuthMode("register");
+              setPasscodeConfirmation("");
+              setFeedback("专员建档模式。请输入登录代号与通行密钥。");
+            }}
+          >
+            专员建档
+          </button>
+        </div>
+        <div className="auth-grade-row">
+          <GoldenRippleButton disabled={authBusy} onClick={() => void submitCredentials()}>
+            {authBusy ? "校验中" : authMode === "register" ? "继续建档" : "校验身份"}
+          </GoldenRippleButton>
+        </div>
+        <div className={`auth-feedback is-${authMessageTone}`}>{authMessage}</div>
+        <div className="auth-pending">{authMode === "register" ? "REGISTRY PENDING · 等待建档" : "ACCESS PENDING · 等待授权"}</div>
       </section>
       <div className="auth-protocol-mark" aria-hidden="true">
         CASSELL COLLEGE · TERMINAL PROTOCOL v4.2.7
@@ -99,12 +347,9 @@ export default function NormaTerminal() {
   const evidencePackets = evidencePacketsData as EvidencePacket[];
   const operationCompleted = profile?.completedMissions.includes(operation.id) ?? false;
 
-  const activateProfile = (name: string) => {
-    const existing = loadAgentProfile();
-    const nextProfile = existing ? touchAgentProfile(existing, name) : createAgentProfile(name);
-    saveAgentProfile(nextProfile);
-    setProfile(nextProfile);
-    setAgentName(nextProfile.name);
+  const activateAccount = (account: AgentAccountSession) => {
+    setProfile(account.profile);
+    setAgentName(account.profile.name);
     setAuthenticated(true);
     setActiveView("terminal");
   };
@@ -112,29 +357,40 @@ export default function NormaTerminal() {
   const handleMissionComplete = (score: MissionScore) => {
     if (!profile) return;
     const nextProfile = completeMission(profile, operation.id, score, operation.unlocks);
-    saveAgentProfile(nextProfile);
+    void updateRemoteProfile(nextProfile);
     setProfile(nextProfile);
   };
 
   const handleArchiveReviewed = (archiveId: string) => {
     if (!profile) return;
     const nextProfile = reviewArchive(profile, archiveId);
-    saveAgentProfile(nextProfile);
+    void updateRemoteProfile(nextProfile);
     setProfile(nextProfile);
   };
 
   const handleAccessLog = (log: Parameters<typeof recordAccessLog>[1]) => {
     if (!profile) return;
     const nextProfile = recordAccessLog(profile, log);
-    saveAgentProfile(nextProfile);
+    void updateRemoteProfile(nextProfile);
     setProfile(nextProfile);
   };
+
+  useEffect(() => {
+    void loadRemoteSession().then((result) => {
+      if (result.ok) {
+        activateAccount(result.account);
+        return;
+      }
+
+      clearAuthSession();
+    });
+  }, []);
 
   if (!authenticated) {
     return (
       <AuthScreen
-        onEnter={(name) => {
-          activateProfile(name);
+        onEnter={(account) => {
+          activateAccount(account);
         }}
       />
     );
@@ -147,6 +403,19 @@ export default function NormaTerminal() {
         <span>{interfaceName} ONLINE</span>
         <span>12ms</span>
       </div>
+      <button
+        type="button"
+        className="terminal-logout"
+        onClick={() => {
+          void logoutRemoteAccount();
+          clearAuthSession();
+          setAuthenticated(false);
+          setProfile(null);
+          setAgentName("未知专员");
+        }}
+      >
+        断开
+      </button>
       <InternalCommsPanel profile={profile} />
       <div className={activeView === "operation" ? "terminal-input-suspended" : ""}>
         <HoloTerminal3D
