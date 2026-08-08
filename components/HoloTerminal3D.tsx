@@ -7896,8 +7896,6 @@ function OverviewPanel({
         <h1>{agentName}</h1>
         <p>专员 · 执行· {interfaceName} 接口</p>
         <div className="archive-metrics overview-metrics">
-          <span>{booksLabel} 已接</span>
-          <span>{totalEvidence} 条证</span>
           <span>{accessLabel}</span>
           {profile ? <span>{profile.agentId}</span> : null}
           {profile ? <span>{missionCount} 条任务记录</span> : null}

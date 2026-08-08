@@ -4859,39 +4859,39 @@ button:disabled:hover {
 }
 
 .pure-holo-terminal.is-overview .domain-overview {
-  width: min(560px, calc(100vw - 48px));
-  min-height: 260px;
-  transform: translate(-50%, -50%) scale(0.7);
+  width: min(620px, calc(100vw - 48px));
+  min-height: 292px;
+  transform: translate(-50%, -50%) scale(0.82);
   transform-origin: center center;
 }
 
 .pure-holo-terminal.is-overview .domain-overview .identity-light {
-  width: 185px;
-  height: 185px;
+  width: 212px;
+  height: 212px;
   filter: blur(16px);
 }
 
 .pure-holo-terminal.is-overview .domain-overview > strong {
-  font-size: clamp(82px, 6.2vw, 112px);
+  font-size: clamp(96px, 7vw, 132px);
 }
 
 .pure-holo-terminal.is-overview .domain-overview h1 {
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .pure-holo-terminal.is-overview .domain-overview p {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .pure-holo-terminal.is-overview .overview-metrics {
-  width: min(430px, 78vw);
-  gap: 6px;
-  margin-top: 12px;
+  width: min(490px, 82vw);
+  gap: 7px;
+  margin-top: 14px;
 }
 
 .pure-holo-terminal.is-overview .overview-metrics span {
-  padding: 4px 7px;
-  font-size: 7px;
+  padding: 5px 8px;
+  font-size: 8px;
 }
 
 .archive-evidence-list {
