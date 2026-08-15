@@ -1,0 +1,78 @@
+[
+  {
+    "id": "evpkt-kuimen-sonar",
+    "operationId": "op-kuimen-review",
+    "title": "水下声呐记录",
+    "type": "声呐",
+    "classification": "EXECUTIVE DEPARTMENT / SENSOR",
+    "summary": "摩尼亚赫号在目标水域捕获非自然回声。回声边界呈现建筑结构特征，并在通讯失真前出现短暂增强。",
+    "readings": [
+      { "label": "DEPTH", "value": "97m", "state": "warn" },
+      { "label": "ECHO", "value": "+43%", "state": "danger" },
+      { "label": "LOCK", "value": "UNSTABLE", "state": "warn" }
+    ],
+    "normaNotes": ["回声形态不符合普通沉积物。", "异常增强发生在通讯断裂前 09 秒。"],
+    "sourceEvidenceIds": []
+  },
+  {
+    "id": "evpkt-kuimen-comms",
+    "operationId": "op-kuimen-review",
+    "title": "叶胜 / 亚纪通讯片段",
+    "type": "通讯",
+    "classification": "EXECUTIVE DEPARTMENT / COMMS",
+    "summary": "潜水组通讯在进入青铜结构后出现间歇噪声。最后有效片段包含对龙文与内部空间的确认。",
+    "readings": [
+      { "label": "SIGNAL", "value": "31%", "state": "warn" },
+      { "label": "NOISE", "value": "HIGH", "state": "danger" },
+      { "label": "LINK", "value": "BROKEN", "state": "danger" }
+    ],
+    "normaNotes": ["通讯衰减与声呐异常同步。", "最后片段应作为青铜城接触证据封存。"],
+    "sourceEvidenceIds": []
+  },
+  {
+    "id": "evpkt-kuimen-vitals",
+    "operationId": "op-kuimen-review",
+    "title": "氧气与生命体征读数",
+    "type": "生命体征",
+    "classification": "MEDICAL / FIELD VITALS",
+    "summary": "氧气窗口持续缩短，生命体征在撤离阶段出现异常波动。回收建议被多次标注为高优先级。",
+    "readings": [
+      { "label": "O2", "value": "00:38:15", "state": "danger" },
+      { "label": "HEART", "value": "IRREG", "state": "warn" },
+      { "label": "ROPE", "value": "LOST", "state": "danger" }
+    ],
+    "normaNotes": ["继续推进将触发纪律审查。", "强制回收符合生命优先规则。"],
+    "sourceEvidenceIds": []
+  },
+  {
+    "id": "evpkt-kuimen-bronze-city",
+    "operationId": "op-kuimen-review",
+    "title": "青铜城结构扫描",
+    "type": "档案",
+    "classification": "ALCHEMY / RUIN SCAN",
+    "summary": "扫描记录显示目标并非自然洞穴。结构边界、龙文残留和热源波动共同指向青铜城内部系统响应。",
+    "readings": [
+      { "label": "DRAGON TEXT", "value": "CONFIRMED", "state": "danger" },
+      { "label": "HEAT", "value": "+18%", "state": "warn" },
+      { "label": "GATE", "value": "ACTIVE", "state": "danger" }
+    ],
+    "normaNotes": ["遗迹存在主动响应迹象。", "建议关联 KING-01 初级档案。"],
+    "sourceEvidenceIds": []
+  },
+  {
+    "id": "evpkt-kuimen-fire-control",
+    "operationId": "op-kuimen-review",
+    "title": "摩尼亚赫号火控记录",
+    "type": "火控",
+    "classification": "WEAPON / AUTHORIZATION",
+    "summary": "摩尼亚赫号火控链在事件后段进入待命，但授权窗口短暂且不稳定。记录建议复盘火控介入时机。",
+    "readings": [
+      { "label": "ARSENAL", "value": "STANDBY", "state": "warn" },
+      { "label": "WINDOW", "value": "SHORT", "state": "danger" },
+      { "label": "AUTH", "value": "PENDING", "state": "warn" }
+    ],
+    "normaNotes": ["王座级目标出现时，火控链应提前待命。", "该记录可解锁二次作战摘要。"],
+    "sourceEvidenceIds": []
+  }
+]
+

@@ -26,21 +26,30 @@
     "data:emotion:ai": "node scripts/analyze-ai-emotions.mjs",
     "data:build:ai": "npm run data:split && npm run data:emotion:ai",
     "data:build:chunks": "npm run data:split:chunks && npm run data:emotion",
-    "data:build": "npm run data:split && npm run data:emotion"
+    "data:build": "npm run data:split && npm run data:emotion",
+    "lore:extract": "node scripts/extract-norma-lore.mjs",
+    "data:lore": "node scripts/extract-norma-lore.mjs",
+    "test:auth": "node scripts/test-auth-flow.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.17.10",
     "@react-three/postprocessing": "^2.16.6",
+    "@types/pg": "^8.20.4",
+    "earth-flyline": "^1.6.9",
     "next": "^14.2.23",
+    "pg": "^8.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "three": "^0.171.0"
+    "three": "^0.171.0",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/topojson-client": "^3.1.5",
     "typescript": "^5.7.2"
   }
 }

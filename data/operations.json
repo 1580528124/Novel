@@ -1,0 +1,93 @@
+[
+  {
+    "id": "op-kuimen-review",
+    "title": "夔门计划复盘",
+    "code": "MISSION-S / KUIMEN",
+    "level": "S",
+    "briefing": "长江水下青铜城接触事件已进入执行部复盘序列。专员需要审阅关键证据，确认失控节点，并提交 NORMA 判断报告。",
+    "objectives": ["确认主要异常来源", "判断最优先处置动作", "完成事件风险归档"],
+    "evidenceIds": [
+      "evpkt-kuimen-sonar",
+      "evpkt-kuimen-comms",
+      "evpkt-kuimen-vitals",
+      "evpkt-kuimen-bronze-city",
+      "evpkt-kuimen-fire-control"
+    ],
+    "questions": [
+      {
+        "id": "source",
+        "prompt": "主要异常来源是什么？",
+        "options": [
+          {
+            "id": "bronze-city-response",
+            "label": "青铜城内部系统响应",
+            "consequence": "NORMA 认可该判断。声呐、龙文结构和通讯失真都指向遗迹级主动响应。",
+            "score": 35
+          },
+          {
+            "id": "equipment-failure",
+            "label": "潜水设备故障",
+            "consequence": "该判断过度依赖表层读数，无法解释青铜结构扫描中的同步异常。",
+            "score": 12
+          },
+          {
+            "id": "water-condition",
+            "label": "普通水文变化",
+            "consequence": "NORMA 驳回该判断。事件已超过自然水文扰动阈值。",
+            "score": 4
+          }
+        ]
+      },
+      {
+        "id": "action",
+        "prompt": "最优先处置动作是什么？",
+        "options": [
+          {
+            "id": "recover-team",
+            "label": "强制回收潜水组",
+            "consequence": "该动作符合执行部生命优先规则，但可能错失短暂证据窗口。",
+            "score": 26
+          },
+          {
+            "id": "continue-objective",
+            "label": "继续推进任务目标",
+            "consequence": "该动作存在纪律风险。通讯和氧气窗口已经低于安全阈值。",
+            "score": 8
+          },
+          {
+            "id": "fire-control-standby",
+            "label": "请求摩尼亚赫号火控待命",
+            "consequence": "NORMA 记录该判断。王座级风险出现时，火控授权链必须提前进入待命。",
+            "score": 30
+          }
+        ]
+      },
+      {
+        "id": "classification",
+        "prompt": "该事件应归档到哪个风险类别？",
+        "options": [
+          {
+            "id": "dragon-king-risk",
+            "label": "龙王复苏风险",
+            "consequence": "归档有效。事件与青铜与火之王相关证据链高度吻合。",
+            "score": 35
+          },
+          {
+            "id": "alchemy-ruin",
+            "label": "炼金遗迹风险",
+            "consequence": "归档不完整。青铜城是遗迹，但风险核心并非普通炼金残留。",
+            "score": 18
+          },
+          {
+            "id": "command-accident",
+            "label": "执行部指挥事故",
+            "consequence": "归档偏移。指挥链存在争议，但不能覆盖王座级目标风险。",
+            "score": 10
+          }
+        ]
+      }
+    ],
+    "unlocks": ["archive-bronze-fire", "archive-seven-sins", "archive-moniach-second-strike"]
+  }
+]
+
