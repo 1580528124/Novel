@@ -46,8 +46,8 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
   const [passcodeConfirmation, setPasscodeConfirmation] = useState("");
   const [agentName, setAgentName] = useState("");
   const [pendingAccount, setPendingAccount] = useState<AgentAccountSession | null>(null);
-  const [authTransition, setAuthTransition] = useState<"idle" | "registering">("idle");
-  const [authMessage, setAuthMessage] = useState("等待专员身份签名");
+  const [authTransition, setAuthTransition] = useState<"idle" | "logging-in" | "registering">("idle");
+  const [authMessage, setAuthMessage] = useState("");
   const [authMessageTone, setAuthMessageTone] = useState<AuthMessageTone>("idle");
   const [authBusy, setAuthBusy] = useState(false);
   const displayName = agentName.trim() || loginId.trim() || "未知专员";
@@ -61,15 +61,22 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
     void warmupRemoteAuth();
   }, []);
 
+  const authPending = authTransition !== "idle";
+  const isRegistering = authTransition === "registering";
+
   if (connecting) {
     return (
       <AuthAnimation
         userName={pendingAccount?.profile.name ?? displayName}
         userId={pendingAccount?.profile.agentId ?? displayName}
         targetBloodRank={pendingAccount?.profile.bloodRank ?? "C"}
-        ready={authTransition !== "registering" || Boolean(pendingAccount)}
-        scanLabel={authTransition === "registering" ? "专员档案写入" : "执行部档案编号"}
-        scanStatus={authTransition === "registering" ? "正在建立数据库索引 / 等待 NORMA 写入确认" : "正在读取身份签名"}
+        ready={!authPending || Boolean(pendingAccount)}
+        scanLabel={isRegistering ? "专员档案写入" : "身份签名读取"}
+        scanStatus={
+          isRegistering
+            ? "正在建立数据库索引 / 等待 NORMA 写入确认"
+            : "正在连接专员档案 / 等待 NORMA 回执"
+        }
         onComplete={() => {
           if (pendingAccount) onEnter(pendingAccount);
         }}
@@ -95,6 +102,9 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
       return;
     }
 
+    setAuthTransition("logging-in");
+    setPendingAccount(null);
+    setConnecting(true);
     setAuthBusy(true);
     setFeedback("正在校验身份密钥");
     const result = await (async () => {
@@ -113,17 +123,21 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
     setAuthBusy(false);
 
     if (!result.ok) {
+      setConnecting(false);
+      setAuthTransition("idle");
       setFeedback(result.reason, "error");
       return;
     }
 
     if (!result.exists) {
+      setConnecting(false);
+      setAuthTransition("idle");
       setFeedback("未检索到该登录代号，请切换至专员建档。", "error");
       return;
     }
 
+    setAuthTransition("idle");
     setPendingAccount(result.account);
-    setConnecting(true);
   };
 
   const submitDossier = async () => {
@@ -198,7 +212,7 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
             />
             <span className="auth-focus-shock" aria-hidden="true" />
           </div>
-          <div className={`auth-feedback is-${authMessageTone}`}>{authMessage}</div>
+          {authMessage ? <div className={`auth-feedback is-${authMessageTone}`}>{authMessage}</div> : null}
           <div className="auth-grade-row">
             <GoldenRippleButton disabled={authBusy} onClick={() => void submitDossier()}>
               {authBusy ? "建档中" : "进入卡塞尔"}
@@ -209,7 +223,7 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
             className="auth-back-button"
             onClick={() => {
               setAuthStep("credentials");
-              setFeedback("等待专员身份签名");
+              setFeedback("");
             }}
           >
             返回身份入口
@@ -242,7 +256,7 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
       <section className="auth-identity-gate">
         <div className="auth-ritual-light" aria-hidden="true" />
         <div className="auth-protocol">身份验证协议已启动</div>
-        <p className="auth-waiting">登录代号需要 6-14 位。</p>
+        {authMode === "register" ? <p className="auth-waiting">登录代号需要 6-14 位。</p> : null}
         <SGradeBadge variant="emblem" />
         <div className="auth-credential auth-input-row">
           <label htmlFor="login-id">代号</label>
@@ -294,7 +308,7 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
             onClick={() => {
               setAuthMode("login");
               setPasscodeConfirmation("");
-              setFeedback("等待专员身份签名");
+              setFeedback("");
             }}
           >
             身份校验
@@ -316,7 +330,7 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
             {authBusy ? "校验中" : authMode === "register" ? "继续建档" : "校验身份"}
           </GoldenRippleButton>
         </div>
-        <div className={`auth-feedback is-${authMessageTone}`}>{authMessage}</div>
+        {authMessage ? <div className={`auth-feedback is-${authMessageTone}`}>{authMessage}</div> : null}
         <div className="auth-pending">{authMode === "register" ? "REGISTRY PENDING · 等待建档" : "ACCESS PENDING · 等待授权"}</div>
       </section>
       <div className="auth-protocol-mark" aria-hidden="true">

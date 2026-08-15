@@ -4,7 +4,7 @@ import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { Html, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { CSSProperties, ReactNode } from "react";
-import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { feature } from "topojson-client";
 import type { FeatureCollection } from "geojson";
@@ -2709,10 +2709,12 @@ function NodeIcon({
 function ArchiveNode({
   module,
   active,
+  overview,
   onSelect
 }: {
   module: HoloModule;
   active: boolean;
+  overview: boolean;
   onSelect: (id: HoloModuleId) => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
@@ -2724,7 +2726,8 @@ function ArchiveNode({
     if (!groupRef.current) return;
     const lift = Math.sin(time * 1.1 + module.position[2]) * 0.055;
     groupRef.current.position.y = module.position[1] + lift;
-    const scale = active ? 1.42 : hovered ? 1.05 : 0.92;
+    const baseScale = overview ? 1.02 : 0.92;
+    const scale = active ? 1.42 : hovered ? baseScale + 0.12 : baseScale;
     groupRef.current.scale.lerp(new THREE.Vector3(scale, scale, scale), 0.09);
 
     if (iconRef.current) {
@@ -2733,9 +2736,9 @@ function ArchiveNode({
     }
   });
 
-  const opacity = active ? 0.9 : hovered ? 0.64 : 0.34;
-  const shardOpacity = active ? 0.44 : hovered ? 0.32 : 0.16;
-  const emissiveIntensity = active ? 1.8 : hovered ? 1.15 : 0.64;
+  const opacity = active ? 0.9 : hovered ? 0.68 : overview ? 0.48 : 0.34;
+  const shardOpacity = active ? 0.44 : hovered ? 0.34 : overview ? 0.22 : 0.16;
+  const emissiveIntensity = active ? 1.8 : hovered ? 1.2 : overview ? 0.82 : 0.64;
   const labelAbove = module.id === "identity" || module.id === "surveillance" || module.id === "evidence";
 
   return (
@@ -2762,8 +2765,8 @@ function ArchiveNode({
         transform
         center
         position={[0, labelAbove ? 0.76 : -0.68, 0]}
-        distanceFactor={5.4}
-        className={`archive-node-label${active ? " is-active" : ""}`}
+        distanceFactor={overview ? 5.72 : 5.4}
+        className={`archive-node-label${active ? " is-active" : ""}${overview ? " is-overview-node" : ""}`}
       >
         <span>{module.eyebrow}</span>
         <strong>{module.label}</strong>
@@ -2786,7 +2789,7 @@ function ArchiveNodes({ activeId, onSelect }: { activeId: HoloModuleId; onSelect
   return (
     <group>
       {visibleModules.map((module) => (
-        <ArchiveNode key={module.id} module={module} active={activeId === module.id} onSelect={onSelect} />
+        <ArchiveNode key={module.id} module={module} active={activeId === module.id} overview={activeId === "overview"} onSelect={onSelect} />
       ))}
     </group>
   );
@@ -7689,6 +7692,10 @@ function ArchivePanel({
     );
   }
 
+  if (module.id === "academy") {
+    return <AcademyCampusPanel module={module} profile={profile} />;
+  }
+
   if (module.id === "identity" && profile) {
     const missionScores = Object.values(profile.missionScores);
     const reviewedArchives = profile.reviewedArchives ?? [];
@@ -7759,13 +7766,7 @@ function ArchivePanel({
     >
       <div className="identity-light" aria-hidden="true" />
       <span>{module.eyebrow}</span>
-      {module.id === "academy" ? (
-        <div className="domain-emblem">
-          <img src="/cassell-emblem.png" alt="" />
-        </div>
-      ) : (
-        <strong>{module.mark}</strong>
-      )}
+      <strong>{module.mark}</strong>
       <h1>{module.title}</h1>
       <p>{blueprint?.summary ?? module.subtitle}</p>
       <div className="domain-line-list">
@@ -7851,6 +7852,313 @@ function ArchiveDetailDrawer({ module, record }: { module: HoloModule; record: A
   );
 }
 
+function AcademyCampusPanel({ module, profile }: { module: HoloModule; profile?: AgentProfile | null }) {
+  const [activeSection, setActiveSection] = useState<"overview" | "training" | "events" | "orgs">("overview");
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>(["lineage", "dragontext", "psych"]);
+  const [selectedEventIndex, setSelectedEventIndex] = useState(0);
+  const [selectedOrgIndex, setSelectedOrgIndex] = useState(0);
+  const bloodRank = profile?.bloodRank ?? "C";
+  const accessLabel = formatAccessLabel(getEffectiveAccess(profile));
+  const sectionTabs = [
+    { id: "overview", label: "总览", meta: "校园状态" },
+    { id: "training", label: "训练", meta: "课程记录" },
+    { id: "events", label: "事件", meta: "校内日志" },
+    { id: "orgs", label: "组织", meta: "权限入口" }
+  ] as const;
+  const statusItems = [
+    { label: "校园结界", value: "稳定", detail: "主钟楼 / 夜间巡检" },
+    { label: "中央控制室", value: "在线", detail: "NORMA 主机同步" },
+    { label: "冰窖访问", value: "索引开放", detail: "完整封存需更高授权" },
+    { label: "执行部通道", value: "旁路监听", detail: "任务入口独立审计" },
+    { label: "学生组织", value: "摘要可读", detail: "学生会 / 狮心会" },
+    { label: "校内异常", value: "1 条", detail: "门禁记录待核验" }
+  ];
+  const weekDays = ["周一", "周二", "周三", "周四", "周五"];
+  const courseSlots = [
+    { id: "am1", label: "上午一", time: "08:30-10:10" },
+    { id: "am2", label: "上午二", time: "10:30-12:10" },
+    { id: "pm1", label: "下午一", time: "14:10-15:50" },
+    { id: "pm2", label: "下午二", time: "16:10-17:50" }
+  ];
+  const courseItems = [
+    { id: "lineage", day: "周一", slot: "am1", time: "08:30-10:10", course: "龙族谱系学", room: "图书馆 3F", teacher: "古德里安教授", credit: "2 学分", kind: "必修", requirement: "新生开放", locked: false, note: "黑王血裔基础模型" },
+    { id: "dragontext", day: "周二", slot: "pm1", time: "14:10-15:50", course: "龙文辨识", room: "语言实验室", teacher: "富山雅史", credit: "3 学分", kind: "必修", requirement: "3E 初筛完成", locked: false, note: "黄金瞳刺激样本" },
+    { id: "psych", day: "周三", slot: "pm2", time: "16:10-17:50", course: "心理稳定性评估", room: "NORMA 远程", teacher: "诺玛", credit: "必修", kind: "必修", requirement: "持续记录", locked: false, note: "梦境、幻听与龙文反应" },
+    { id: "ling", day: "周四", slot: "am2", time: "10:30-12:10", course: "言灵控制", room: "训练场 A", teacher: "曼施坦因", credit: "4 学分", kind: "选修", requirement: "需 B 级以上", locked: bloodRank === "C", note: "血统稳定性观察" },
+    { id: "alchemy-basic", day: "周四", slot: "pm1", time: "14:10-15:50", course: "炼金机械基础", room: "装备部 B2", teacher: "装备部", credit: "2 学分", kind: "选修", requirement: "器械锁定", locked: false, note: "危险器材禁止领用" },
+    { id: "drive", day: "周五", slot: "pm2", time: "16:10-17:50", course: "战术驾驶", room: "训练场 C", teacher: "执行部", credit: "1 学分", kind: "选修", requirement: "执行部审核", locked: false, note: "高速规避与城市撤离" },
+    { id: "free-day", day: "周五", slot: "am1", time: "08:30-10:10", course: "自由一日安全规程", room: "钟楼教室", teacher: "风纪委员会", credit: "1 学分", kind: "选修", requirement: "校规确认", locked: false, note: "校内战斗与避险流程" },
+    { id: "ice-cellar", day: "周三", slot: "am2", time: "10:30-12:10", course: "冰窖封存协议", room: "冰窖入口", teacher: "诺玛", credit: "2 学分", kind: "选修", requirement: "需 A 级授权", locked: !["A", "S"].includes(bloodRank), note: "封存物识别与撤离路线" }
+  ];
+  const selectedCourses = courseItems.filter((course) => selectedCourseIds.includes(course.id));
+  const requiredCount = courseItems.filter((course) => course.kind === "必修").length;
+  const electiveCount = selectedCourses.filter((course) => course.kind === "选修").length;
+  const toggleCourse = (courseId: string) => {
+    const course = courseItems.find((item) => item.id === courseId);
+    if (!course || course.kind === "必修" || course.locked) return;
+
+    setSelectedCourseIds((current) =>
+      current.includes(courseId) ? current.filter((item) => item !== courseId) : [...current, courseId]
+    );
+  };
+  const eventItems = [
+    {
+      time: "23:10",
+      place: "图书馆地下层",
+      title: "门禁读取异常",
+      status: "待核验",
+      owner: "风纪委员会",
+      level: "CAMPUS WATCH",
+      summary: "地下层门禁在无课程申请的情况下被读取两次，NORMA 已冻结后续访问令牌。",
+      steps: ["读取门禁签名", "比对课程表与值班表", "冻结异常令牌", "等待风纪委员会复核"]
+    },
+    {
+      time: "21:42",
+      place: "训练场 B",
+      title: "言灵波动超阈",
+      status: "已压制",
+      owner: "曼施坦因",
+      level: "TRAINING ALERT",
+      summary: "训练场 B 出现短时言灵波动，未触发人员伤害记录。戒律残余场已完成压制。",
+      steps: ["记录波峰", "确认学生名单", "同步心理评估", "归入训练异常样本"]
+    },
+    {
+      time: "19:05",
+      place: "装备部",
+      title: "低危爆炸登记",
+      status: "已归档",
+      owner: "装备部",
+      level: "EQUIPMENT NOTE",
+      summary: "装备部登记一次低危实验事故，未影响冰窖线路。相关器材暂不对学生开放。",
+      steps: ["封存实验台", "回收碎片", "登记器材编号", "等待装备部说明"]
+    },
+    {
+      time: "16:30",
+      place: "学生会频道",
+      title: "资源申请排队",
+      status: "摘要可读",
+      owner: "学生会",
+      level: "CHANNEL QUEUE",
+      summary: "学生会提交行动资源申请，当前只开放排队摘要，不开放申请正文。",
+      steps: ["登记频道请求", "排队资源池", "等待执行部回执", "保留摘要索引"]
+    },
+    {
+      time: "08:20",
+      place: "钟楼",
+      title: "夜间巡查回执",
+      status: "正常",
+      owner: "守夜人",
+      level: "NIGHT WATCH",
+      summary: "守夜人提交夜间巡查回执。钟楼、图书馆和训练场入口未发现持续异常。",
+      steps: ["读取巡查路线", "同步主钟楼", "更新校园结界状态", "归档"]
+    }
+  ];
+  const orgItems = [
+    { name: "学生会频道", owner: "恺撒·加图索", status: "摘要可读", detail: "资源申请、行动支援与学生会留言只开放摘要。", access: "学生组织 / 公开摘要", updates: ["晚间资源申请排队", "自由一日规程待确认", "学生会行动支援表已更新"] },
+    { name: "狮心会档案", owner: "楚子航", status: "只读", detail: "历史纪律、训练记录与战斗报告需按专员权限分级读取。", access: "战斗社团 / 只读", updates: ["训练场 B 复盘记录已同步", "历史会长档案保持封存", "夜间巡查协助请求已关闭"] },
+    { name: "新闻部匿名栏", owner: "芬格尔", status: "低可信", detail: "八卦、线报与未经核验内容进入低可信缓存。", access: "匿名频道 / 低可信", updates: ["匿名投稿 3 条待筛", "学生会预算传闻已标注低可信", "图书馆异常被重复投稿"] },
+    { name: "风纪委员会", owner: "曼施坦因", status: "审计中", detail: "校规、处分、门禁异常与夜间巡查记录归入该入口。", access: "校规审计 / 需记录访问", updates: ["门禁异常等待复核", "自由一日安全规程待发布", "训练场言灵波动已压制"] },
+    { name: "装备部申请", owner: "装备部", status: "限制", detail: "危险装备、炼金弹药与临时器械领用需额外授权。", access: "器材申请 / 危险限制", updates: ["低危爆炸已归档", "炼金机械基础课程器械锁定", "临时器材申请暂停"] },
+    { name: "校董会记录", owner: "秘党", status: "封存", detail: "预算、任命与高阶血统处置记录仅保留索引。", access: "秘党索引 / 封存", updates: ["预算记录不开放", "高阶血统处置表仅保留索引", "校董会投票记录需更高权限"] }
+  ];
+  const selectedEvent = eventItems[selectedEventIndex] ?? eventItems[0];
+  const selectedOrg = orgItems[selectedOrgIndex] ?? orgItems[0];
+
+  return (
+    <section className="academy-campus-panel" style={{ "--holo-color": module.color } as CSSProperties} aria-label="卡塞尔学院内网">
+      <header className="academy-campus-header">
+        <div>
+          <span>CASSELL CAMPUS INTRANET / NORMA READ ONLY</span>
+          <h1>学院内网值班台</h1>
+          <p>仅开放校园状态、训练记录与校内事件摘要。冰窖、校董会与完整人员档案保持封存。</p>
+        </div>
+        <aside>
+          <strong>{accessLabel}</strong>
+          <em>{profile?.agentId ?? "未建档"} / {bloodRank}级血统</em>
+        </aside>
+      </header>
+
+      <nav className="academy-campus-tabs" aria-label="学院内网板块">
+        {sectionTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={activeSection === tab.id ? "is-active" : ""}
+            onClick={() => setActiveSection(tab.id)}
+          >
+            <strong>{tab.label}</strong>
+            <span>{tab.meta}</span>
+          </button>
+        ))}
+      </nav>
+
+      <div className="academy-campus-viewport">
+        {activeSection === "overview" ? (
+          <section className="academy-section academy-section-overview" aria-label="校园系统状态">
+            <header>
+              <span>CAMPUS SYSTEM STATUS</span>
+              <strong>校园系统状态</strong>
+            </header>
+            <div className="academy-campus-status">
+              {statusItems.map((item) => (
+                <article key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <em>{item.detail}</em>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {activeSection === "training" ? (
+          <section className="academy-section academy-training-board" aria-label="课程与训练记录">
+            <header>
+              <span>COURSE REGISTRATION</span>
+              <strong>课表与选课系统</strong>
+            </header>
+            <div className="academy-course-layout">
+              <section className="academy-week-schedule" aria-label="本周课表">
+                <header>
+                  <h2>本周课表</h2>
+                  <span>{selectedCourses.length} 门课程 / 必修 {requiredCount} / 选修 {electiveCount}</span>
+                </header>
+                <div className="academy-timetable">
+                  <div className="academy-timetable-corner">时间</div>
+                  {weekDays.map((day) => (
+                    <div key={day} className="academy-timetable-day">{day}</div>
+                  ))}
+                  {courseSlots.map((slot) => (
+                    <Fragment key={slot.id}>
+                      <div className="academy-timetable-slot">
+                        <strong>{slot.label}</strong>
+                        <span>{slot.time}</span>
+                      </div>
+                      {weekDays.map((day) => {
+                        const item = selectedCourses.find((course) => course.day === day && course.slot === slot.id);
+                        return (
+                          <div key={`${slot.id}-${day}`} className={`academy-timetable-cell${item ? " has-course" : ""}`}>
+                            {item ? (
+                              <button type="button" onClick={() => toggleCourse(item.id)}>
+                                <strong>{item.course}</strong>
+                                <span>{item.room}</span>
+                                <em>{item.kind}</em>
+                              </button>
+                            ) : (
+                              <p>空课</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </Fragment>
+                  ))}
+                </div>
+              </section>
+              <section className="academy-course-catalog" aria-label="可选课程">
+                <header>
+                  <h2>选课权限</h2>
+                  <span>{bloodRank}级血统 / 课程申请</span>
+                </header>
+                {courseItems.map((item) => (
+                  <article key={item.course} className={item.locked ? "is-locked" : selectedCourseIds.includes(item.id) ? "is-selected" : ""}>
+                    <div>
+                      <strong>{item.course}</strong>
+                      <span>{item.day} {item.time} / {item.room} / {item.teacher}</span>
+                      <small>{item.credit} / {item.note}</small>
+                    </div>
+                    <em>{item.kind}</em>
+                    <b>{item.requirement}</b>
+                    <button type="button" onClick={() => toggleCourse(item.id)} disabled={item.kind === "必修" || item.locked}>
+                      {item.locked ? "权限不足" : item.kind === "必修" ? "必修锁定" : selectedCourseIds.includes(item.id) ? "退选" : "选课"}
+                    </button>
+                  </article>
+                ))}
+              </section>
+            </div>
+          </section>
+        ) : null}
+
+        {activeSection === "events" ? (
+          <section className="academy-section academy-event-log" aria-label="校园事件日志">
+            <header>
+              <span>CAMPUS EVENT LOG</span>
+              <strong>校内事件日志</strong>
+            </header>
+            <div className="academy-interactive-layout">
+              <div className="academy-click-list">
+                {eventItems.map((item, index) => (
+                  <button
+                    key={`${item.time}-${item.title}`}
+                    type="button"
+                    className={selectedEventIndex === index ? "is-active" : ""}
+                    onClick={() => setSelectedEventIndex(index)}
+                  >
+                    <time>{item.time}</time>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>{item.place} / {item.owner}</span>
+                    </div>
+                    <em>{item.status}</em>
+                  </button>
+                ))}
+              </div>
+              <aside className="academy-detail-panel">
+                <span>{selectedEvent.level}</span>
+                <h2>{selectedEvent.title}</h2>
+                <strong>{selectedEvent.place} / {selectedEvent.status}</strong>
+                <p>{selectedEvent.summary}</p>
+                <div>
+                  {selectedEvent.steps.map((step, index) => (
+                    <em key={step}>{String(index + 1).padStart(2, "0")} / {step}</em>
+                  ))}
+                </div>
+              </aside>
+            </div>
+          </section>
+        ) : null}
+
+        {activeSection === "orgs" ? (
+          <section className="academy-section academy-org-board" aria-label="学院组织入口">
+            <header>
+              <span>COLLEGE ORGANIZATION ACCESS</span>
+              <strong>学院组织入口</strong>
+            </header>
+            <div className="academy-interactive-layout">
+              <div className="academy-click-list is-org-list">
+                {orgItems.map((item, index) => (
+                  <button
+                    key={item.name}
+                    type="button"
+                    className={selectedOrgIndex === index ? "is-active" : ""}
+                    onClick={() => setSelectedOrgIndex(index)}
+                  >
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span>{item.owner}</span>
+                    </div>
+                    <em>{item.status}</em>
+                  </button>
+                ))}
+              </div>
+              <aside className="academy-detail-panel">
+                <span>{selectedOrg.access}</span>
+                <h2>{selectedOrg.name}</h2>
+                <strong>{selectedOrg.owner} / {selectedOrg.status}</strong>
+                <p>{selectedOrg.detail}</p>
+                <div>
+                  {selectedOrg.updates.map((update, index) => (
+                    <em key={update}>{String(index + 1).padStart(2, "0")} / {update}</em>
+                  ))}
+                </div>
+              </aside>
+            </div>
+          </section>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 function OverviewPanel({
   agentName,
   interfaceName,
@@ -7872,19 +8180,12 @@ function OverviewPanel({
   workdeskOpen?: boolean;
   onToggleWorkdesk?: () => void;
 }) {
-  const totalEvidence = lore.evidence.length;
-  const booksLabel = lore.books.map((book) => `ⅠⅡⅢⅣⅤ`[book.book_index - 1] ?? String(book.book_index)).join(" / ");
-  const missionCount = profile?.completedMissions.length ?? 0;
-  const latestScore = profile ? Object.values(profile.missionScores).at(-1) : null;
-  const accessLabel = formatAccessLabel(getEffectiveAccess(profile));
+  const bloodRank = profile?.bloodRank ?? "C";
   const kingReviewed = Boolean(profile?.reviewedArchives?.includes("archive-bronze-fire"));
   const directiveTitle = !operationCompleted
     ? "MISSION-S / 夔门计划复盘"
     : kingReviewed
       ? "NORMA WORK DESK / 当前无强制任"       : "KING-01 初级档案已开";
-  const directiveCopy = !operationCompleted
-    ? "执行部下发复盘任务。审阅证据链，提交专员判断报告"     : kingReviewed
-      ? "KING-01 初级审阅已记录。系统存在若干可复核事项，但当前没有强制派遣指令"       : "夔门计划复盘已写入专员履历。建议审阅青铜与火之王档案";
   const primaryAction = kingReviewed && onOpenDossier ? onOpenDossier : operationCompleted && !kingReviewed && onOpenKingArchive ? onOpenKingArchive : onStartOperation;
   const primaryLabel = !operationCompleted ? "审阅任务" : kingReviewed ? "打开专员履历" : "进入 KING-01 档案";
 
@@ -7892,20 +8193,12 @@ function OverviewPanel({
     <>
       <section className="identity-stage domain-stage domain-overview" style={{ "--holo-color": "#d9c27a" } as CSSProperties}>
         <div className="identity-light" aria-hidden="true" />
-        <strong>S</strong>
+        <strong>{bloodRank}</strong>
         <h1>{agentName}</h1>
-        <p>专员 · 执行· {interfaceName} 接口</p>
-        <div className="archive-metrics overview-metrics">
-          <span>{accessLabel}</span>
-          {profile ? <span>{profile.agentId}</span> : null}
-          {profile ? <span>{missionCount} 条任务记录</span> : null}
-          {latestScore ? <span>最近任务评定 {latestScore.rating}</span> : null}
-        </div>
         {onStartOperation && !kingReviewed ? (
           <div className={`overview-operation-directive${operationCompleted ? " is-archived" : ""}`}>
-            <span>NORMA DIRECTIVE</span>
+            <span>{operationCompleted ? "ARCHIVE ACCESS" : "PENDING DIRECTIVE"}</span>
             <h2>{directiveTitle}</h2>
-            <p>{directiveCopy}</p>
             {operationCompleted && profile ? (
               <em className="overview-system-log">[NORMA] {profile.agentId} / {formatAgentAuthorization(profile)} / KING-01 OPEN</em>
             ) : null}
@@ -7919,29 +8212,32 @@ function OverviewPanel({
         <aside className={`overview-workdesk-panel${workdeskOpen ? " is-open" : " is-collapsed"}`} aria-label="NORMA 工作">
           <button type="button" className="overview-workdesk-toggle" onClick={onToggleWorkdesk} aria-expanded={workdeskOpen}>
             <span>WORK DESK</span>
-            <strong>{workdeskOpen ? "收起" : "3 "}</strong>
+            <strong>{workdeskOpen ? "收起" : "3 件"}</strong>
           </button>
           {workdeskOpen ? (
             <div className="overview-workdesk-body">
-              <span>NORMA WORK DESK</span>
-              <h2>通讯频道已建</h2>
+              <span>NORMA QUEUE</span>
+              <h2>当前工作台</h2>
               {profile ? (
                 <em className="overview-system-log">[NORMA] {profile.agentId} / {formatAgentAuthorization(profile)} / WORK DESK STABLE</em>
               ) : null}
-              <div className="norma-dialogue" aria-label="NORMA 通讯">
-                <p>
-                  <strong>NORMA</strong>
-                  <span>专员，当前没有强制派遣指令。你可以保持在线，或进入履历复核已归档任务</span>
-                </p>
-                <p>
-                  <strong>NORMA</strong>
-                  <span>KING-01 初级审阅已记录。相关访问权限将保留在你的专员档案中</span>
-                </p>
-                <p className="is-muted">
-                  <strong>SYSTEM</strong>
-                  <span>BJ-METRO-07 被标记为城市异常记录。该事项尚未生成执行部任务</span>
-                </p>
-              </div>
+              <ol className="overview-workdesk-list" aria-label="工作队列">
+                <li>
+                  <span>01</span>
+                  <strong>专员履历复核</strong>
+                  <em>KING-01 审阅已归档</em>
+                </li>
+                <li>
+                  <span>02</span>
+                  <strong>北京异常旁路监听</strong>
+                  <em>未生成强制任务</em>
+                </li>
+                <li>
+                  <span>03</span>
+                  <strong>灾害征兆日更缓存</strong>
+                  <em>等待下次零点同步</em>
+                </li>
+              </ol>
               <button type="button" onClick={primaryAction}>
                 {primaryLabel}
               </button>
@@ -8049,26 +8345,26 @@ export default function HoloTerminal3D({
     if (activePreset === "overview") {
       if (!operationCompleted) {
         return [
-          `欢迎回来，${agentName}专员。血统校验完成，${currentAccessLabel}接入稳定。`,
-          "MISSION-S 复盘仍在等待你的判断，我已为你保留现场证据链。",
-          `当前授权为${currentAccessLabel}。完整王座档案将在复盘后开放。`,
-          "我会记录你的判断过程。请把它当作执行部工作，而不是答题。"
+          `欢迎回来，${agentName}专员。${currentAccessLabel}已完成接入裁定。`,
+          "夔门计划复盘仍在等待专员判断，我已保留现场证据链。",
+          "你现在看到的不是资料入口，而是 NORMA 为你生成的当日值班界面。",
+          "我会记录你的判断路径。请按执行部流程处理，而不是按题库作答。"
         ];
       }
       if (!reviewedKing) {
         return [
-          `欢迎回来，${agentName}。夔门计划复盘已归档。`,
-          "KING-01 初级档案访问权限已经打开，建议完成档案复核。",
-          "建议审阅青铜与火之王档案。该记录会写入你的专员履历。",
-          "当前无强制派遣指令。你可以先完成档案复核。"
+          `欢迎回来，${agentName}专员。夔门计划复盘已写入履历。`,
+          "KING-01 初级档案已开放。该访问会被记录为专员复核行为。",
+          "当前无强制派遣指令。建议先完成王座档案复核。",
+          "我会在你离开首页时保持旁路监听。"
         ];
       }
       return [
-        `欢迎回来，${agentName}专员。血统校验完成，${currentAccessLabel}接入稳定。`,
+        `欢迎回来，${agentName}专员。${currentAccessLabel}接入稳定。`,
         "今日无强制任务。预警、证据库与执行部旁路监听保持在线。",
-        `KING-01 初级审阅已记录。你的当前授权仍为${currentAccessLabel}。`,
-        "北京尼伯龙根异常仍处于旁路监听，尚未生成执行部强制任务。",
-        "我会在异常概率越过阈值时打断当前界面。"
+        "KING-01 初级审阅已记录。相关权限保留在你的专员档案中。",
+        "北京尼伯龙根异常处于旁路监听，尚未生成执行部强制任务。",
+        "我会在异常概率越过阈值时打断当前界面。你可以继续巡检。"
       ];
     }
     if (activePreset === "surveillance") {
