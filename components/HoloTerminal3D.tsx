@@ -8193,8 +8193,18 @@ function OverviewPanel({
     <>
       <section className="identity-stage domain-stage domain-overview" style={{ "--holo-color": "#d9c27a" } as CSSProperties}>
         <div className="identity-light" aria-hidden="true" />
-        <strong>{bloodRank}</strong>
-        <h1>{agentName}</h1>
+        <div className="world-tree-core" aria-label="NORMA 世界树权限核心">
+          <div className="world-tree-core__halo" aria-hidden="true" />
+          <div className="world-tree-core__disc">
+            <img src="/cassell-emblem.png" alt="" />
+          </div>
+          <div className="world-tree-core__axis" aria-hidden="true" />
+          <div className="world-tree-core__readout">
+            <span>WORLD TREE INDEX</span>
+            <strong>{bloodRank} / 1u</strong>
+            <em>{agentName} · 专员</em>
+          </div>
+        </div>
         {onStartOperation && !kingReviewed ? (
           <div className={`overview-operation-directive${operationCompleted ? " is-archived" : ""}`}>
             <span>{operationCompleted ? "ARCHIVE ACCESS" : "PENDING DIRECTIVE"}</span>
