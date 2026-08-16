@@ -2538,31 +2538,78 @@ function NormaCore({ activeId }: { activeId: HoloModuleId }) {
 }
 
 function HoloEnergyLines({ activeId }: { activeId: HoloModuleId }) {
-  const geometries = useMemo(() => {
-    const center = new THREE.Vector3(0, 0.1, 0);
-    return modules.slice(1).map((module) => {
+  const rootLines = useMemo(() => {
+    const rootBase = new THREE.Vector3(0, -0.3, 0.62);
+    return modules.slice(1).map((module, moduleIndex) => {
       const end = new THREE.Vector3(...module.position);
-      const mid = center.clone().lerp(end, 0.52);
-      mid.y += 0.42;
-      const curve = new THREE.QuadraticBezierCurve3(center, mid, end);
-      return { id: module.id, geometry: new THREE.BufferGeometry().setFromPoints(curve.getPoints(72)), color: module.color };
+      const side = end.x === 0 ? (moduleIndex % 2 === 0 ? -1 : 1) : Math.sign(end.x);
+      const rootShoulder = new THREE.Vector3(side * (0.24 + moduleIndex * 0.015), -0.28 + (moduleIndex % 3) * 0.018, 0.72);
+      const rootRun = new THREE.Vector3(end.x * 0.22, -0.24 + Math.sin(moduleIndex * 1.7) * 0.018, 0.82 + end.z * 0.08);
+      const climb = new THREE.Vector3(end.x * 0.68, end.y * 0.52 + 0.02, end.z * 0.72 + 0.08);
+      const mainCurve = new THREE.CatmullRomCurve3([rootBase, rootShoulder, rootRun, climb, end], false, "catmullrom", 0.32);
+
+      const tendrils = [-1, 1].map((branchSide) => {
+        const offset = 0.07 * branchSide;
+        const branchStart = new THREE.Vector3(rootBase.x + offset, rootBase.y + 0.005, rootBase.z + 0.05);
+        const branchRun = new THREE.Vector3(end.x * (0.18 + branchSide * 0.012), -0.3 + branchSide * 0.014, 0.92 + end.z * 0.08);
+        const branchEnd = new THREE.Vector3(end.x * 0.78 + offset * 0.32, end.y * 0.74 + 0.06, end.z * 0.86);
+        return new THREE.CatmullRomCurve3([branchStart, branchRun, branchEnd], false, "catmullrom", 0.42);
+      });
+
+      return {
+        id: module.id,
+        curve: mainCurve,
+        tendrils,
+        color: module.color
+      };
     });
   }, []);
 
   return (
-    <group>
-      {geometries.map((line) => (
-        <line key={line.id}>
-          <primitive object={line.geometry} attach="geometry" />
-          <lineBasicMaterial
-            color={line.color}
-            transparent
-            opacity={activeId === line.id ? 0.34 : activeId === "overview" ? 0.16 : 0}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-          />
-        </line>
-      ))}
+    <group position={[0, 0, 0]}>
+      {rootLines.map((line) => {
+        const isActive = activeId === line.id;
+        const isOverview = activeId === "overview";
+
+        return (
+        <group key={line.id}>
+          <mesh>
+            <tubeGeometry args={[line.curve, 96, isOverview ? 0.0065 : 0.012, 6, false]} />
+            <meshBasicMaterial
+              color={line.color}
+              transparent
+              opacity={isActive ? 0.48 : isOverview ? 0.145 : 0}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+            />
+          </mesh>
+          {!isOverview ? (
+            <mesh>
+              <tubeGeometry args={[line.curve, 96, 0.024, 6, false]} />
+              <meshBasicMaterial
+                color={line.color}
+                transparent
+                opacity={isActive ? 0.1 : 0}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+              />
+            </mesh>
+          ) : null}
+          {!isOverview ? line.tendrils.map((curve, index) => (
+            <mesh key={`${line.id}-root-${index}`}>
+              <tubeGeometry args={[curve, 64, 0.0055, 5, false]} />
+              <meshBasicMaterial
+                color={line.color}
+                transparent
+                opacity={isActive ? 0.2 : 0}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+              />
+            </mesh>
+          )) : null}
+        </group>
+        );
+      })}
     </group>
   );
 }
