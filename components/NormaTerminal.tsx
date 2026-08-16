@@ -319,7 +319,7 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
             onClick={() => {
               setAuthMode("register");
               setPasscodeConfirmation("");
-              setFeedback("专员建档模式。请输入登录代号与通行密钥。");
+              setFeedback("");
             }}
           >
             专员建档

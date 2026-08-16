@@ -2427,12 +2427,15 @@ button:disabled:hover {
 .auth-protocol,
 .auth-ritual-status {
   position: relative;
-  color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 243, 204, 0.58);
   font-family: var(--font-manuscript);
-  font-size: 13px;
+  font-size: 18px;
   font-style: italic;
-  font-weight: 300;
-  letter-spacing: 0.4em;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-shadow:
+    0 0 16px rgba(217, 194, 122, 0.18),
+    0 1px 1px rgba(0, 0, 0, 0.45);
 }
 
 .auth-waiting {
@@ -2656,10 +2659,10 @@ button:disabled:hover {
   padding: 13px 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   border-bottom: 1px solid rgba(201, 169, 110, 0.1);
-  color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 243, 204, 0.56);
   font-family: var(--font-manuscript);
-  font-size: 9px;
-  letter-spacing: 0.3em;
+  font-size: 13px;
+  letter-spacing: 0.16em;
 }
 
 .auth-input-row {
@@ -2673,10 +2676,12 @@ button:disabled:hover {
 }
 
 .auth-input-row label {
-  color: rgba(255, 255, 255, 0.16);
-  font-family: var(--font-manuscript);
-  font-size: 9px;
-  letter-spacing: 0.3em;
+  color: rgba(255, 243, 204, 0.56);
+  font-family: var(--font-terminal);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 12px rgba(217, 194, 122, 0.12);
 }
 
 .auth-input-row input {
@@ -2685,13 +2690,14 @@ button:disabled:hover {
   border: 0;
   outline: 0;
   background: transparent;
-  color: rgba(255, 255, 255, 0.76);
+  color: rgba(255, 255, 255, 0.9);
   font-family: var(--font-terminal);
-  font-size: 16px;
+  font-size: 18px;
   font-variant-numeric: tabular-nums;
   line-height: 28px;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.12em;
   vertical-align: middle;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.12);
 }
 
 .auth-focus-shock {
@@ -2810,31 +2816,32 @@ button:disabled:hover {
 .auth-grade-row span {
   display: block;
   margin-bottom: 2px;
-  color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 243, 204, 0.46);
   font-family: var(--font-manuscript);
-  font-size: 9px;
-  letter-spacing: 0.3em;
+  font-size: 12px;
+  letter-spacing: 0.16em;
 }
 
 .auth-grade-row strong {
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(255, 243, 204, 0.82);
   font-family: var(--font-manuscript);
-  font-size: 22px;
+  font-size: 24px;
   font-style: italic;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.16em;
   -webkit-text-stroke: 0;
   text-shadow:
-    0 0 20px rgba(255, 255, 255, 0.06),
-    0 0 44px rgba(201, 169, 110, 0.06);
+    0 0 18px rgba(255, 243, 204, 0.14),
+    0 0 36px rgba(201, 169, 110, 0.12);
 }
 
 .auth-pending {
   margin-top: 34px;
-  color: rgba(255, 255, 255, 0.08);
-  font-family: var(--font-manuscript);
-  font-size: 7px;
-  font-style: italic;
-  letter-spacing: 0.3em;
+  color: rgba(255, 243, 204, 0.28);
+  font-family: var(--font-terminal);
+  font-size: 11px;
+  font-style: normal;
+  letter-spacing: 0.14em;
+  text-shadow: 0 0 12px rgba(217, 194, 122, 0.1);
 }
 
 .golden-ripple-button {
@@ -2844,10 +2851,12 @@ button:disabled:hover {
   border-color: rgba(201, 169, 110, 0.28);
   border-radius: 3px;
   background: rgba(201, 169, 110, 0.07);
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 243, 204, 0.9);
   font-family: var(--font-engraved);
-  font-size: 12px;
-  letter-spacing: 0.32em;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 12px rgba(217, 194, 122, 0.18);
   box-shadow:
     0 0 34px rgba(201, 169, 110, 0.08),
     inset 0 0 18px rgba(201, 169, 110, 0.035);
@@ -3175,14 +3184,14 @@ button:disabled:hover {
   z-index: 3;
   display: grid;
   place-items: center;
-  width: min(520px, calc(100vw - 48px));
-  min-height: 420px;
+  width: min(680px, calc(100vw - 48px));
+  min-height: 500px;
   text-align: center;
   transform: translate(-50%, -50%);
 }
 
 .scan-ring {
-  width: min(420px, 82vw);
+  width: min(500px, 84vw);
   aspect-ratio: 1;
   overflow: visible;
 }
@@ -3190,7 +3199,7 @@ button:disabled:hover {
 .scan-ring circle {
   fill: none;
   stroke: rgba(0, 180, 255, 0.08);
-  stroke-width: 1;
+  stroke-width: 1.4;
 }
 
 .scan-ring .scan-ring-active {
@@ -3203,14 +3212,14 @@ button:disabled:hover {
 
 .scan-ring line {
   stroke: rgba(0, 212, 255, 0.46);
-  stroke-width: 1.4;
+  stroke-width: 2;
   filter: drop-shadow(0 0 18px rgba(0, 212, 255, 0.28));
 }
 
 .scan-identity {
   position: absolute;
   display: grid;
-  gap: 10px;
+  gap: 16px;
   color: rgba(255, 255, 255, 0.76);
   transition: opacity 120ms linear;
 }
@@ -3219,36 +3228,36 @@ button:disabled:hover {
 .blood-phase span {
   color: rgba(255, 255, 255, 0.24);
   font-family: var(--font-manuscript);
-  font-size: 10px;
+  font-size: clamp(13px, 1.5vw, 18px);
   font-style: italic;
-  letter-spacing: 0.36em;
+  letter-spacing: 0.22em;
 }
 
 .scan-identity strong {
   font-family: var(--font-manuscript);
-  font-size: 22px;
-  letter-spacing: 0.36em;
+  font-size: clamp(30px, 3.6vw, 48px);
+  letter-spacing: 0.2em;
   text-shadow: 0 0 28px rgba(255, 255, 255, 0.1);
 }
 
 .scan-identity em {
   color: rgba(0, 212, 255, 0.58);
   font-family: var(--font-terminal);
-  font-size: 10px;
+  font-size: clamp(12px, 1.3vw, 16px);
   font-style: normal;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   text-shadow: 0 0 18px rgba(0, 212, 255, 0.18);
 }
 
 .blood-phase {
   align-content: center;
-  gap: 16px;
+  gap: 24px;
 }
 
 .blood-phase strong {
   color: rgba(255, 255, 255, 0.55);
   font-family: var(--font-engraved);
-  font-size: 88px;
+  font-size: clamp(112px, 12vw, 168px);
   line-height: 1;
   transition:
     color 220ms ease,
@@ -3265,8 +3274,8 @@ button:disabled:hover {
 }
 
 .blood-meter {
-  width: min(320px, 70vw);
-  height: 3px;
+  width: min(440px, 72vw);
+  height: 4px;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.07);
@@ -3282,11 +3291,11 @@ button:disabled:hover {
 
 .blood-phase p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.22);
   font-family: var(--font-manuscript);
-  font-size: 9px;
+  font-size: clamp(12px, 1.4vw, 17px);
   font-style: italic;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.18em;
 }
 
 .awakening-phase::before {
@@ -3299,8 +3308,8 @@ button:disabled:hover {
 
 .awakening-ripple {
   position: absolute;
-  width: 220px;
-  height: 220px;
+  width: min(300px, 52vw);
+  height: min(300px, 52vw);
   border: 1px solid rgba(255, 232, 170, 0.88);
   border-radius: 50%;
   box-shadow:
@@ -3313,8 +3322,8 @@ button:disabled:hover {
   position: relative;
   color: rgba(201, 169, 110, 0.72);
   font-family: var(--font-engraved);
-  font-size: 13px;
-  letter-spacing: 0.48em;
+  font-size: clamp(17px, 2.2vw, 28px);
+  letter-spacing: 0.26em;
   text-shadow: 0 0 42px rgba(201, 169, 110, 0.24);
   animation: awakening-text 900ms ease-out both;
 }
@@ -3353,48 +3362,60 @@ button:disabled:hover {
 
 .welcome-phase {
   align-content: center;
+  width: min(800px, calc(100vw - 48px));
+  min-height: 560px;
   animation: welcome-rise 1000ms ease-out both;
 }
 
 .welcome-phase span {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.82);
   font-family: var(--font-manuscript);
-  font-size: 32px;
-  font-weight: 300;
-  letter-spacing: 0.2em;
+  font-size: clamp(42px, 5.2vw, 64px);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  line-height: 1.08;
+  text-shadow:
+    0 0 36px rgba(255, 255, 255, 0.12),
+    0 0 72px rgba(201, 169, 110, 0.1);
 }
 
 .welcome-phase strong {
-  margin-top: 12px;
+  margin-top: 18px;
   color: #c9a96e;
   font-family: var(--font-engraved);
-  font-size: 22px;
-  font-weight: 400;
-  letter-spacing: 0.22em;
-  text-shadow: 0 0 62px rgba(201, 169, 110, 0.24);
+  font-size: clamp(24px, 3vw, 40px);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  line-height: 1.08;
+  text-shadow:
+    0 0 34px rgba(201, 169, 110, 0.34),
+    0 0 86px rgba(201, 169, 110, 0.2);
 }
 
 .welcome-phase p {
-  margin: 14px 0 0;
-  color: rgba(255, 255, 255, 0.16);
+  margin: 22px 0 0;
+  color: rgba(255, 255, 255, 0.34);
   font-family: var(--font-manuscript);
-  font-size: 9px;
+  font-size: clamp(12px, 1.45vw, 18px);
   font-style: italic;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 24px rgba(255, 255, 255, 0.08);
 }
 
 .welcome-particles {
   display: flex;
-  gap: 7px;
-  margin-top: 28px;
+  gap: 11px;
+  margin-top: 36px;
 }
 
 .welcome-particles i {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #c9a96e;
-  box-shadow: 0 0 14px rgba(201, 169, 110, 0.5);
+  box-shadow:
+    0 0 14px rgba(201, 169, 110, 0.64),
+    0 0 30px rgba(201, 169, 110, 0.24);
   animation: welcome-dot 900ms ease-out both;
 }
 
@@ -14773,4 +14794,3 @@ button:disabled:hover {
     flex-direction: column;
   }
 }
-
