@@ -4982,8 +4982,8 @@ button:disabled:hover {
 }
 
 .world-tree-core__disc {
-  top: 76px;
-  width: min(168px, 26vw);
+  top: 62px;
+  width: min(218px, 32vw);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -4999,7 +4999,7 @@ button:disabled:hover {
 
 .world-tree-core__disc img {
   display: block;
-  width: 82%;
+  width: 86%;
   height: auto;
   opacity: 0.46;
   mix-blend-mode: screen;

@@ -127,10 +127,10 @@ const modules: HoloModule[] = [
     eyebrow: "IDENTITY PROTOCOL",
     title: "身份认证 · 血统权",
     subtitle: "专员身份、血统等级、数据库权限与异常访问记录",
-    position: [0, 1.86, 0.18],
+    position: [0, 2.34, -0.3],
     color: "#d9c27a",
-    camera: [0, 2.16, 4.55],
-    target: [0, 1.66, 0.18],
+    camera: [0, 2.44, 4.75],
+    target: [0, 2.05, -0.08],
     mark: "ID",
     lines: ["血统签名：待校", "权限环：S / A / 封存", "异常访问：EVA 监测"]
   },
@@ -2627,9 +2627,148 @@ function NodeIcon({
   shardOpacity: number;
   emissiveIntensity: number;
 }) {
+  const glassOpacity = opacity * 0.34;
+  const wireOpacity = opacity * 0.68;
+
   return (
     <>
       {id === "identity" ? (
+        <>
+          <mesh rotation={[0.1, 0.08, 0]}>
+            <boxGeometry args={[0.38, 0.82, 0.035]} />
+            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity * 0.62} transparent opacity={glassOpacity} wireframe />
+          </mesh>
+          <mesh position={[0, 0, 0.035]} rotation={[0, 0, Math.PI / 2]}>
+            <torusGeometry args={[0.23, 0.008, 8, 80, Math.PI * 1.55]} />
+            <meshBasicMaterial color="#fff0ba" transparent opacity={wireOpacity} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+          <mesh position={[0, 0, 0.04]} rotation={[0, 0, -Math.PI / 2]}>
+            <torusGeometry args={[0.23, 0.008, 8, 80, Math.PI * 1.55]} />
+            <meshBasicMaterial color={color} transparent opacity={wireOpacity * 0.72} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+          {[-0.52, 0.52].map((y) => (
+            <mesh key={y} position={[0, y, 0.055]} rotation={[Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[0.17, 0.185, 32]} />
+              <meshBasicMaterial color={color} transparent opacity={opacity * 0.32} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+            </mesh>
+          ))}
+        </>
+      ) : null}
+      {id === "missions" ? (
+        <>
+          <mesh rotation={[0.18, 0.08, -0.72]}>
+            <coneGeometry args={[0.3, 0.95, 3, 1]} />
+            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity} transparent opacity={0.5} wireframe />
+          </mesh>
+          <mesh rotation={[Math.PI / 2, 0.15, -0.28]}>
+            <torusGeometry args={[0.58, 0.009, 8, 128, Math.PI * 1.32]} />
+            <meshBasicMaterial color={color} transparent opacity={opacity * 0.62} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+          {[0.22, 0.36].map((offset) => (
+            <mesh key={offset} position={[offset, -offset * 0.55, 0.05]} rotation={[0.2, 0, -0.72]}>
+              <boxGeometry args={[0.05, 0.14, 0.018]} />
+              <meshBasicMaterial color="#ffb1a4" transparent opacity={opacity * 0.42} blending={THREE.AdditiveBlending} />
+            </mesh>
+          ))}
+        </>
+      ) : null}
+      {id === "kings" ? (
+        <>
+          {[-0.36, 0, 0.36].map((x, index) => (
+            <mesh key={x} position={[x, index === 1 ? 0.2 : 0.03, 0]} rotation={[0.18, 0.08, x * -0.72]}>
+              <coneGeometry args={[index === 1 ? 0.095 : 0.075, index === 1 ? 0.9 : 0.62, 4, 1]} />
+              <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity * 1.05} transparent opacity={0.48} wireframe />
+            </mesh>
+          ))}
+          <mesh position={[0, -0.24, 0]} rotation={[0.1, 0.08, 0]}>
+            <boxGeometry args={[0.58, 0.16, 0.05]} />
+            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity * 0.72} transparent opacity={0.36} wireframe />
+          </mesh>
+          <mesh position={[0, 0.02, 0.02]} rotation={[0.16, 0.05, 0]}>
+            <boxGeometry args={[0.12, 0.64, 0.035]} />
+            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity * 0.8} transparent opacity={0.28} wireframe />
+          </mesh>
+          <mesh position={[0, -0.34, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.48, 0.007, 8, 128, Math.PI]} />
+            <meshBasicMaterial color={color} transparent opacity={opacity * 0.46} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+          {[-0.22, 0.22].map((x) => (
+            <mesh key={x} position={[x, -0.02, 0.04]} rotation={[0, 0, x > 0 ? -0.72 : 0.72]}>
+              <boxGeometry args={[0.035, 0.44, 0.018]} />
+              <meshBasicMaterial color="#fff0ba" transparent opacity={opacity * 0.42} blending={THREE.AdditiveBlending} />
+            </mesh>
+          ))}
+        </>
+      ) : null}
+      {id === "academy" ? (
+        <>
+          {[-1, 1].map((side) => (
+            <mesh key={side} position={[side * 0.16, 0, 0]} rotation={[0.08, side * 0.22, side * 0.16]}>
+              <boxGeometry args={[0.34, 0.58, 0.024]} />
+              <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity * 0.7} transparent opacity={0.34} wireframe />
+            </mesh>
+          ))}
+          <HoloTube points={[[0, -0.32, 0.05], [0.02, -0.08, 0.08], [-0.04, 0.18, 0.08], [0.06, 0.36, 0.04]]} radius={0.007} color="#d9c27a" opacity={opacity * 0.56} segments={36} />
+          {[-0.12, 0.1].map((x) => (
+            <HoloTube key={x} points={[[0.02, 0.03, 0.08], [x, 0.17, 0.08], [x * 1.3, 0.28, 0.06]]} radius={0.005} color="#d9c27a" opacity={opacity * 0.42} segments={24} />
+          ))}
+        </>
+      ) : null}
+      {id === "alchemy" ? (
+        <>
+          <mesh rotation={[0, 0, Math.PI / 3]}>
+            <ringGeometry args={[0.5, 0.525, 3]} />
+            <meshBasicMaterial color={color} transparent opacity={opacity * 0.66} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+          <mesh rotation={[0.44, 0.22, 0]}>
+            <octahedronGeometry args={[0.3, 1]} />
+            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity} transparent opacity={0.44} wireframe />
+          </mesh>
+          {[0.38, 0.62].map((radius, index) => (
+            <mesh key={radius} rotation={[Math.PI / 2 + index * 0.22, 0, index * 0.72]}>
+              <torusGeometry args={[radius, 0.006, 8, 128, Math.PI * 1.5]} />
+              <meshBasicMaterial color={color} transparent opacity={opacity * (0.42 - index * 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} />
+            </mesh>
+          ))}
+        </>
+      ) : null}
+      {id === "surveillance" ? (
+        <>
+          <mesh position={[0, -0.16, 0]} rotation={[Math.PI / 2.7, 0, 0]}>
+            <coneGeometry args={[0.52, 0.14, 64, 1, true]} />
+            <meshBasicMaterial color={color} transparent opacity={opacity * 0.22} wireframe blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+          {[0.26, 0.44, 0.62].map((radius, index) => (
+            <mesh key={radius} position={[0, index * 0.07, 0]} rotation={[Math.PI / 2.45, 0, 0]}>
+              <torusGeometry args={[radius, 0.006, 8, 128, Math.PI * 0.95]} />
+              <meshBasicMaterial color={color} transparent opacity={opacity * (0.48 - index * 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} />
+            </mesh>
+          ))}
+          <mesh position={[0, -0.22, 0]}>
+            <sphereGeometry args={[0.045, 16, 8]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={opacity * 0.88} blending={THREE.AdditiveBlending} />
+          </mesh>
+        </>
+      ) : null}
+      {id === "evidence" ? (
+        <>
+          {[-1, 0, 1].map((index) => (
+            <mesh key={index} position={[index * 0.17, index * 0.035, index * 0.025]} rotation={[0.08, 0.04, index * 0.12]}>
+              <boxGeometry args={[0.34, 0.46, 0.018]} />
+              <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity * 0.62} transparent opacity={0.3} wireframe />
+            </mesh>
+          ))}
+          <HoloTube points={[[-0.27, 0.2, 0.08], [-0.06, 0.03, 0.1], [0.18, 0.18, 0.08]]} radius={0.005} color={color} opacity={opacity * 0.48} segments={28} />
+          <HoloTube points={[[-0.22, -0.18, 0.08], [0.04, -0.04, 0.1], [0.28, -0.16, 0.08]]} radius={0.005} color={color} opacity={opacity * 0.38} segments={28} />
+          {[-0.27, 0.18, -0.22, 0.28].map((x, index) => (
+            <mesh key={`${x}-${index}`} position={[x, index < 2 ? 0.18 : -0.16, 0.1]}>
+              <sphereGeometry args={[0.024, 10, 6]} />
+              <meshBasicMaterial color="#fff0ba" transparent opacity={opacity * 0.64} blending={THREE.AdditiveBlending} />
+            </mesh>
+          ))}
+        </>
+      ) : null}
+      {id === "overview" ? (
         <>
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <torusGeometry args={[0.54, 0.012, 8, 128]} />
@@ -2638,94 +2777,6 @@ function NodeIcon({
           <mesh>
             <ringGeometry args={[0.22, 0.34, 6]} />
             <meshBasicMaterial color={color} transparent opacity={opacity * 0.62} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
-          </mesh>
-        </>
-      ) : null}
-      {id === "missions" ? (
-        <>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.56, 0.012, 8, 128, Math.PI * 1.58]} />
-            <meshBasicMaterial color={color} transparent opacity={opacity} blending={THREE.AdditiveBlending} depthWrite={false} />
-          </mesh>
-          <mesh position={[0, 0.02, 0]} rotation={[0, 0, Math.PI / 4]}>
-            <boxGeometry args={[0.16, 0.74, 0.16]} />
-            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity} transparent opacity={0.5} wireframe />
-          </mesh>
-        </>
-      ) : null}
-      {id === "kings" ? (
-        <>
-          {[0, 0.42, -0.42].map((rotation) => (
-            <mesh key={rotation} rotation={[Math.PI / 2, rotation, 0]}>
-              <torusGeometry args={[0.58, 0.01, 8, 128]} />
-              <meshBasicMaterial color={color} transparent opacity={opacity * 0.72} blending={THREE.AdditiveBlending} depthWrite={false} />
-            </mesh>
-          ))}
-          <mesh rotation={[0.36, 0.24, 0]}>
-            <icosahedronGeometry args={[0.34, 1]} />
-            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity} transparent opacity={0.42} wireframe />
-          </mesh>
-        </>
-      ) : null}
-      {id === "academy" ? (
-        <>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.38, 0.56, 96]} />
-            <meshBasicMaterial color={color} transparent opacity={opacity * 0.48} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} depthWrite={false} />
-          </mesh>
-          <mesh position={[-0.18, 0, 0]} rotation={[0, 0, -0.18]}>
-            <boxGeometry args={[0.28, 0.48, 0.025]} />
-            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity * 0.82} transparent opacity={0.42} wireframe />
-          </mesh>
-          <mesh position={[0.18, 0, 0]} rotation={[0, 0, 0.18]}>
-            <boxGeometry args={[0.28, 0.48, 0.025]} />
-            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity * 0.82} transparent opacity={0.42} wireframe />
-          </mesh>
-        </>
-      ) : null}
-      {id === "alchemy" ? (
-        <>
-          {[0.34, 0.55, 0.76].map((radius, index) => (
-            <mesh key={radius} rotation={[Math.PI / 2 + index * 0.28, 0, index * 0.7]}>
-              <torusGeometry args={[radius, 0.007, 8, 128, Math.PI * (index === 1 ? 1.42 : 2)]} />
-              <meshBasicMaterial color={color} transparent opacity={opacity * (0.62 - index * 0.1)} blending={THREE.AdditiveBlending} depthWrite={false} />
-            </mesh>
-          ))}
-          <mesh rotation={[0.44, 0.22, 0]}>
-            <tetrahedronGeometry args={[0.34, 0]} />
-            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity} transparent opacity={0.48} wireframe />
-          </mesh>
-        </>
-      ) : null}
-      {id === "surveillance" ? (
-        <>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.62, 0.006, 8, 128]} />
-            <meshBasicMaterial color={color} transparent opacity={opacity * 0.68} blending={THREE.AdditiveBlending} depthWrite={false} />
-          </mesh>
-          {[0.18, 0.34, 0.5].map((radius) => (
-            <mesh key={radius} rotation={[Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[radius, radius + 0.006, 96]} />
-              <meshBasicMaterial color={color} transparent opacity={opacity * 0.28} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
-            </mesh>
-          ))}
-          <mesh>
-            <sphereGeometry args={[0.06, 16, 8]} />
-            <meshBasicMaterial color="#ffffff" transparent opacity={opacity} blending={THREE.AdditiveBlending} />
-          </mesh>
-        </>
-      ) : null}
-      {id === "evidence" ? (
-        <>
-          {[0, 1, 2].map((index) => (
-            <mesh key={index} position={[index * 0.16 - 0.16, index * 0.04 - 0.04, 0]} rotation={[0, 0, index * 0.1 - 0.1]}>
-              <boxGeometry args={[0.36, 0.48, 0.018]} />
-              <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity * 0.65} transparent opacity={0.32} wireframe />
-            </mesh>
-          ))}
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.58, 0.006, 8, 128, Math.PI * 1.35]} />
-            <meshBasicMaterial color={color} transparent opacity={opacity * 0.42} blending={THREE.AdditiveBlending} depthWrite={false} />
           </mesh>
         </>
       ) : null}
@@ -2787,6 +2838,8 @@ function ArchiveNode({
   const shardOpacity = active ? 0.44 : hovered ? 0.34 : overview ? 0.22 : 0.16;
   const emissiveIntensity = active ? 1.8 : hovered ? 1.2 : overview ? 0.82 : 0.64;
   const labelAbove = module.id === "identity" || module.id === "surveillance" || module.id === "evidence";
+  const iconScale = module.id === "identity" && overview ? 0.82 : 1;
+  const labelY = module.id === "identity" ? 1.04 : labelAbove ? 0.76 : -0.68;
 
   return (
     <group
@@ -2805,13 +2858,13 @@ function ArchiveNode({
         setHovered(false);
       }}
     >
-      <group ref={iconRef}>
+      <group ref={iconRef} scale={iconScale}>
         <NodeIcon id={module.id} color={module.color} opacity={opacity} shardOpacity={shardOpacity} emissiveIntensity={emissiveIntensity} />
       </group>
       <Html
         transform
         center
-        position={[0, labelAbove ? 0.76 : -0.68, 0]}
+        position={[0, labelY, 0]}
         distanceFactor={overview ? 5.72 : 5.4}
         className={`archive-node-label${active ? " is-active" : ""}${overview ? " is-overview-node" : ""}`}
       >
