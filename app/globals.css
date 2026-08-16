@@ -4924,6 +4924,7 @@ button:disabled:hover {
 }
 
 .world-tree-core__halo,
+.world-tree-lineart,
 .world-tree-core__axis,
 .world-tree-core__disc,
 .world-tree-core__readout {
@@ -4933,18 +4934,16 @@ button:disabled:hover {
 }
 
 .world-tree-core__halo {
-  top: 30px;
-  width: min(286px, 42vw);
+  top: 20px;
+  width: min(300px, 44vw);
   aspect-ratio: 1;
-  border: 1px solid rgba(217, 194, 122, 0.12);
+  border: 0;
   border-radius: 50%;
   background:
-    radial-gradient(circle, rgba(217, 194, 122, 0.08), transparent 58%),
-    radial-gradient(circle, transparent 63%, rgba(111, 174, 154, 0.08) 64%, transparent 65%);
-  box-shadow:
-    0 0 58px rgba(217, 194, 122, 0.1),
-    inset 0 0 42px rgba(217, 194, 122, 0.035);
-  opacity: 0.46;
+    radial-gradient(ellipse at 50% 42%, rgba(217, 194, 122, 0.13), transparent 42%),
+    radial-gradient(ellipse at 50% 70%, rgba(111, 174, 154, 0.055), transparent 46%);
+  box-shadow: none;
+  opacity: 0.42;
   animation: world-tree-halo-breathe 6.4s ease-in-out infinite;
 }
 
@@ -4953,16 +4952,44 @@ button:disabled:hover {
   display: none;
 }
 
+.world-tree-lineart {
+  top: -38px;
+  width: min(430px, 62vw);
+  height: min(430px, 62vw);
+  overflow: visible;
+  opacity: 0.68;
+  border-radius: 0;
+  mix-blend-mode: screen;
+  filter:
+    drop-shadow(0 0 14px rgba(217, 194, 122, 0.26))
+    drop-shadow(0 0 52px rgba(217, 194, 122, 0.14));
+}
+
+.world-tree-lineart::after {
+  display: none;
+}
+
+.world-tree-lineart img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
 .world-tree-core__disc {
-  top: 50px;
-  width: min(238px, 36vw);
+  top: 76px;
+  width: min(168px, 26vw);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 44%, rgba(255, 243, 204, 0.14), transparent 32%),
-    radial-gradient(circle, rgba(5, 18, 14, 0.58), rgba(1, 4, 3, 0.16) 62%, transparent 72%);
+    radial-gradient(circle at 50% 44%, rgba(255, 243, 204, 0.08), transparent 32%),
+    radial-gradient(circle, rgba(5, 18, 14, 0.34), rgba(1, 4, 3, 0.08) 62%, transparent 72%);
   filter:
     drop-shadow(0 0 26px rgba(217, 194, 122, 0.2))
     drop-shadow(0 0 80px rgba(111, 174, 154, 0.08));
@@ -4973,7 +5000,7 @@ button:disabled:hover {
   display: block;
   width: 82%;
   height: auto;
-  opacity: 0.5;
+  opacity: 0.46;
   mix-blend-mode: screen;
   filter:
     saturate(0.82)

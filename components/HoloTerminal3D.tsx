@@ -8195,6 +8195,9 @@ function OverviewPanel({
         <div className="identity-light" aria-hidden="true" />
         <div className="world-tree-core" aria-label="NORMA 世界树权限核心">
           <div className="world-tree-core__halo" aria-hidden="true" />
+          <div className="world-tree-lineart" aria-hidden="true">
+            <img src="/cassell-world-tree-lines.png" alt="" />
+          </div>
           <div className="world-tree-core__disc">
             <img src="/cassell-emblem.png" alt="" />
           </div>
