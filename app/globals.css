@@ -2264,24 +2264,24 @@ button:disabled:hover {
 
 .auth-ritual-screen.is-gold-glow::after {
   background:
-    radial-gradient(circle at 50% 50%, rgba(255, 221, 140, 0.14), transparent 32%),
-    radial-gradient(circle at 50% 50%, rgba(201, 169, 110, 0.11), transparent 60%),
-    radial-gradient(circle at 50% 50%, rgba(201, 169, 110, 0.055), transparent 78%);
+    radial-gradient(ellipse at 50% 42%, rgba(232, 240, 244, 0.16), transparent 30%),
+    radial-gradient(ellipse at 50% 62%, rgba(210, 222, 230, 0.095), transparent 58%),
+    radial-gradient(ellipse at 50% 72%, rgba(217, 194, 122, 0.032), transparent 70%);
   opacity: 1;
-  animation: auth-gold-wake 1800ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: auth-silver-wake 1800ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-@keyframes auth-gold-wake {
+@keyframes auth-silver-wake {
   0% {
-    opacity: 0.58;
-    filter: brightness(0.82);
+    opacity: 0.46;
+    filter: brightness(0.88) saturate(0.8);
   }
   48% {
-    opacity: 0.86;
+    opacity: 0.82;
   }
   100% {
-    opacity: 1;
-    filter: brightness(1);
+    opacity: 0.92;
+    filter: brightness(1.06) saturate(0.72);
   }
 }
 
@@ -2404,14 +2404,15 @@ button:disabled:hover {
   position: absolute;
   top: 28%;
   left: 50%;
-  width: 640px;
-  height: 640px;
+  width: 520px;
+  height: 720px;
   border-radius: 50%;
   background:
-    radial-gradient(ellipse at center, rgba(201, 169, 110, 0.1), transparent 36%),
-    radial-gradient(ellipse at center, rgba(0, 150, 255, 0.035), transparent 70%);
-  filter: blur(18px);
-  transform: translate(-50%, -50%) scale(1);
+    radial-gradient(ellipse at 50% 28%, rgba(244, 248, 250, 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(238, 246, 250, 0.13), rgba(210, 222, 230, 0.07) 42%, rgba(217, 194, 122, 0.025) 76%, transparent),
+    radial-gradient(ellipse at 50% 70%, rgba(111, 174, 154, 0.026), transparent 68%);
+  filter: blur(16px);
+  transform: translate(-50%, -50%) scaleX(0.72);
   animation: identity-light-breathe 4s ease-in-out infinite;
 }
 
@@ -2522,6 +2523,7 @@ button:disabled:hover {
   height: 300px;
   margin: -10px 0 34px;
   pointer-events: none;
+  perspective: 900px;
 }
 
 .s-grade-badge canvas {
@@ -2558,6 +2560,8 @@ button:disabled:hover {
   filter:
     drop-shadow(0 0 24px rgba(201, 169, 110, 0.34))
     drop-shadow(0 0 72px rgba(201, 169, 110, 0.18));
+  transform-origin: center;
+  animation: world-tree-turn 18s linear infinite;
 }
 
 .s-grade-badge.is-emblem::before {
@@ -2960,11 +2964,12 @@ button:disabled:hover {
   z-index: 3;
   display: grid;
   gap: 5px;
-  color: rgba(255, 255, 255, 0.1);
+  color: rgba(206, 216, 224, 0.22);
   font-size: 9px;
   letter-spacing: 0.18em;
   text-align: right;
-  animation: auth-meta-breathe 3.4s ease-in-out infinite;
+  opacity: 1;
+  text-shadow: 0 0 14px rgba(170, 194, 208, 0.08);
 }
 
 .auth-meta span:first-child {
@@ -2972,7 +2977,7 @@ button:disabled:hover {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(218, 226, 232, 0.34);
 }
 
 .auth-meta i {
