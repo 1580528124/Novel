@@ -3358,14 +3358,19 @@ button:disabled:hover {
   top: 50%;
   left: 50%;
   z-index: 1;
-  color: rgba(255, 255, 255, 0.04);
+  color: rgba(190, 200, 206, 0.055);
   font-family: var(--font-engraved);
   font-size: clamp(88px, 12vw, 170px);
   font-weight: 800;
   letter-spacing: 0.18em;
   pointer-events: none;
-  text-shadow: 0 0 80px rgba(0, 180, 255, 0.035);
-  transform: translate(-48%, -53%) scaleX(1.02);
+  text-shadow:
+    0 0 18px rgba(210, 224, 232, 0.035),
+    0 0 60px rgba(170, 194, 208, 0.018);
+  transform: translate3d(-48%, -53%, 0) scaleX(1.02);
+  user-select: none;
+  animation: cassell-silver-breathe 7.4s ease-in-out infinite;
+  will-change: opacity, color, text-shadow;
 }
 
 .scan-phase,
