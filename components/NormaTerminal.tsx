@@ -182,7 +182,7 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
 
   if (authStep === "dossier") {
     return (
-      <main className={`norma-auth auth-ritual-screen${focused ? " is-gold-glow" : ""}`}>
+      <main className={`norma-auth auth-ritual-screen is-auth-entering${focused ? " is-gold-glow" : ""}`}>
         <DragonScaleBackground />
         <div className="auth-eva-word" aria-hidden="true">
           CASSELL
@@ -241,7 +241,7 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
   }
 
   return (
-    <main className={`norma-auth auth-ritual-screen${focused ? " is-gold-glow" : ""}`}>
+    <main className={`norma-auth auth-ritual-screen is-auth-entering${focused ? " is-gold-glow" : ""}`}>
       <DragonScaleBackground />
       <div className="auth-eva-word" aria-hidden="true">
         CASSELL

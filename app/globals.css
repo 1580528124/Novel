@@ -2314,10 +2314,18 @@ button:disabled:hover {
   text-shadow:
     0 0 42px rgba(226, 236, 242, 0.055),
     0 0 120px rgba(170, 194, 208, 0.03);
-  transform: translate(-50%, -52%) scaleX(1.12);
+  backface-visibility: hidden;
+  transform: translate3d(-50%, -52%, 0) scaleX(1.12);
   user-select: none;
   mask-image: linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%);
   animation: cassell-silver-breathe 7.4s ease-in-out infinite;
+  will-change: opacity, filter;
+}
+
+.auth-ritual-screen.is-auth-entering .auth-eva-word {
+  animation:
+    auth-cassell-enter 4200ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    auth-cassell-loaded-breathe 7.4s ease-in-out 8200ms infinite;
 }
 
 .auth-corner-mark {
@@ -2414,6 +2422,11 @@ button:disabled:hover {
   filter: blur(16px);
   transform: translate(-50%, -50%) scaleX(0.72);
   animation: identity-light-breathe 4s ease-in-out infinite;
+}
+
+.auth-ritual-screen.is-auth-entering .auth-ritual-light {
+  opacity: 0;
+  animation: auth-ambient-enter 2600ms cubic-bezier(0.16, 1, 0.3, 1) 3900ms both;
 }
 
 .auth-protocol,
@@ -2533,6 +2546,11 @@ button:disabled:hover {
   height: 300px;
 }
 
+.auth-ritual-screen.is-auth-entering .s-grade-badge canvas {
+  opacity: 0;
+  animation: auth-particles-enter 1600ms cubic-bezier(0.16, 1, 0.3, 1) 6000ms both;
+}
+
 .s-grade-badge strong {
   position: relative;
   z-index: 1;
@@ -2564,6 +2582,13 @@ button:disabled:hover {
   animation: world-tree-turn 18s linear infinite;
 }
 
+.auth-ritual-screen.is-auth-entering .s-grade-badge.is-emblem img {
+  opacity: 0;
+  animation:
+    auth-emblem-enter 1800ms cubic-bezier(0.16, 1, 0.3, 1) 4550ms both,
+    auth-emblem-turn 18s linear 7500ms infinite;
+}
+
 .s-grade-badge.is-emblem::before {
   position: absolute;
   inset: 36px;
@@ -2574,6 +2599,169 @@ button:disabled:hover {
     radial-gradient(circle, rgba(201, 169, 110, 0.14), transparent 56%),
     radial-gradient(circle, rgba(255, 245, 210, 0.08), transparent 42%);
   filter: blur(10px);
+}
+
+.auth-ritual-screen.is-auth-entering .s-grade-badge.is-emblem::before {
+  opacity: 0;
+  animation: auth-emblem-aura-enter 2000ms cubic-bezier(0.16, 1, 0.3, 1) 4300ms both;
+}
+
+.auth-ritual-screen.is-auth-entering .auth-protocol,
+.auth-ritual-screen.is-auth-entering .auth-waiting,
+.auth-ritual-screen.is-auth-entering .auth-credential,
+.auth-ritual-screen.is-auth-entering .auth-mode-switch,
+.auth-ritual-screen.is-auth-entering .auth-grade-row,
+.auth-ritual-screen.is-auth-entering .auth-feedback,
+.auth-ritual-screen.is-auth-entering .auth-back-button,
+.auth-ritual-screen.is-auth-entering .auth-pending {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(14px);
+  animation: auth-form-enter 1350ms cubic-bezier(0.16, 1, 0.3, 1) 8600ms both;
+}
+
+@keyframes auth-cassell-enter {
+  0% {
+    color: rgba(238, 244, 247, 0.17);
+    opacity: 0;
+    filter: brightness(1);
+    text-shadow:
+      0 0 46px rgba(232, 240, 244, 0.18),
+      0 0 126px rgba(178, 202, 216, 0.09),
+      0 0 180px rgba(235, 242, 246, 0.045);
+  }
+  35% {
+    opacity: 0;
+  }
+  100% {
+    color: rgba(238, 244, 247, 0.17);
+    opacity: 1;
+    filter: brightness(1.12);
+    text-shadow:
+      0 0 46px rgba(232, 240, 244, 0.18),
+      0 0 126px rgba(178, 202, 216, 0.09),
+      0 0 180px rgba(235, 242, 246, 0.045);
+  }
+}
+
+@keyframes auth-cassell-loaded-breathe {
+  0%,
+  100% {
+    color: rgba(238, 244, 247, 0.17);
+    opacity: 1;
+    filter: brightness(1.12);
+    text-shadow:
+      0 0 46px rgba(232, 240, 244, 0.18),
+      0 0 126px rgba(178, 202, 216, 0.09),
+      0 0 180px rgba(235, 242, 246, 0.045);
+  }
+  50% {
+    color: rgba(206, 216, 224, 0.075);
+    opacity: 0.72;
+    filter: brightness(0.92);
+    text-shadow:
+      0 0 42px rgba(226, 236, 242, 0.055),
+      0 0 120px rgba(170, 194, 208, 0.03);
+  }
+}
+
+@keyframes auth-ambient-enter {
+  0% {
+    opacity: 0;
+    filter: blur(28px);
+    transform: translate(-50%, -50%) scaleX(0.58) scaleY(0.88);
+  }
+  100% {
+    opacity: 0.74;
+    filter: blur(16px);
+    transform: translate(-50%, -50%) scaleX(0.72);
+  }
+}
+
+@keyframes auth-emblem-aura-enter {
+  0% {
+    opacity: 0;
+    filter: blur(18px);
+    transform: scale(0.62);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(10px);
+    transform: scale(1);
+  }
+}
+
+@keyframes auth-emblem-enter {
+  0% {
+    opacity: 0;
+    filter:
+      drop-shadow(0 0 0 rgba(201, 169, 110, 0))
+      drop-shadow(0 0 0 rgba(201, 169, 110, 0));
+    transform: scale(0.72) rotateY(-34deg);
+  }
+  62% {
+    opacity: 0.96;
+    filter:
+      drop-shadow(0 0 30px rgba(238, 228, 190, 0.42))
+      drop-shadow(0 0 86px rgba(201, 169, 110, 0.2));
+    transform: scale(1.03) rotateY(-8deg);
+  }
+  100% {
+    opacity: 0.9;
+    filter:
+      drop-shadow(0 0 24px rgba(201, 169, 110, 0.34))
+      drop-shadow(0 0 72px rgba(201, 169, 110, 0.18));
+    transform: scale(1) rotateY(0deg);
+  }
+}
+
+@keyframes auth-emblem-turn {
+  0% {
+    opacity: 0.9;
+    transform: rotateY(0deg) rotateZ(-1deg);
+  }
+  45% {
+    opacity: 0.96;
+  }
+  50% {
+    opacity: 0.82;
+    transform: rotateY(180deg) rotateZ(1deg);
+  }
+  100% {
+    opacity: 0.9;
+    transform: rotateY(360deg) rotateZ(-1deg);
+  }
+}
+
+@keyframes auth-particles-enter {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+@keyframes auth-form-enter {
+  0% {
+    visibility: hidden;
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(14px);
+  }
+  1% {
+    visibility: visible;
+  }
+  100% {
+    visibility: visible;
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
 }
 
 .auth-school-emblem {
