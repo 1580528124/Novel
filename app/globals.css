@@ -2305,18 +2305,19 @@ button:disabled:hover {
   pointer-events: none;
   width: 140vw;
   overflow: hidden;
-  color: rgba(255, 255, 255, 0.032);
+  color: rgba(206, 216, 224, 0.075);
   font-family: var(--font-engraved);
   font-size: clamp(132px, 18vw, 260px);
   font-weight: 800;
   letter-spacing: 0.12em;
   text-align: center;
   text-shadow:
-    0 0 80px rgba(0, 180, 255, 0.026),
-    0 0 120px rgba(201, 169, 110, 0.02);
+    0 0 42px rgba(226, 236, 242, 0.055),
+    0 0 120px rgba(170, 194, 208, 0.03);
   transform: translate(-50%, -52%) scaleX(1.12);
   user-select: none;
   mask-image: linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%);
+  animation: cassell-silver-breathe 7.4s ease-in-out infinite;
 }
 
 .auth-corner-mark {
@@ -4057,16 +4058,40 @@ button:disabled:hover {
   z-index: 1;
   pointer-events: none;
   width: 100vw;
-  color: rgba(255, 255, 255, 0.045);
+  color: rgba(218, 226, 232, 0.11);
   font-family: var(--font-engraved);
   font-size: clamp(120px, 18vw, 240px);
   font-weight: 800;
   letter-spacing: 0.32em;
   text-align: center;
   text-indent: 0.32em;
-  text-shadow: 0 0 80px rgba(0, 180, 255, 0.035);
+  text-shadow:
+    0 0 34px rgba(226, 236, 242, 0.08),
+    0 0 96px rgba(170, 194, 208, 0.045);
   transform: translate(-50%, -53%) scaleX(1.08);
   user-select: none;
+  animation: cassell-silver-breathe 7.4s ease-in-out infinite;
+}
+
+@keyframes cassell-silver-breathe {
+  0%,
+  100% {
+    color: rgba(190, 200, 206, 0.055);
+    opacity: 0.64;
+    text-shadow:
+      0 0 18px rgba(210, 224, 232, 0.035),
+      0 0 60px rgba(170, 194, 208, 0.018);
+  }
+
+  48%,
+  58% {
+    color: rgba(238, 244, 247, 0.16);
+    opacity: 0.92;
+    text-shadow:
+      0 0 34px rgba(242, 248, 250, 0.16),
+      0 0 110px rgba(198, 218, 228, 0.08),
+      0 0 180px rgba(255, 255, 255, 0.035);
+  }
 }
 
 .norma-corner-mark {
