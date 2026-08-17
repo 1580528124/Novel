@@ -11,6 +11,9 @@
   --font-engraved: "Cinzel", "Trajan Pro", "Times New Roman", "Noto Serif SC", "SimSun", serif;
   --font-manuscript: "Cormorant Garamond", "EB Garamond", Georgia, "Noto Serif SC", "SimSun", serif;
   --font-terminal: "JetBrains Mono", "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  /* Auth typography record: keep English terminal/CASSELL styles unchanged; use serif Chinese for ritual text and monospace for codes/status. */
+  --font-auth-ritual: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  --font-auth-data: var(--font-terminal);
 }
 
 /* Internal communications command deck */
@@ -2443,11 +2446,11 @@ button:disabled:hover {
 .auth-ritual-status {
   position: relative;
   color: rgba(255, 243, 204, 0.58);
-  font-family: var(--font-manuscript);
+  font-family: var(--font-auth-ritual);
   font-size: 18px;
-  font-style: italic;
-  font-weight: 500;
-  letter-spacing: 0.22em;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.24em;
   text-shadow:
     0 0 16px rgba(217, 194, 122, 0.18),
     0 1px 1px rgba(0, 0, 0, 0.45);
@@ -2457,10 +2460,10 @@ button:disabled:hover {
   position: relative;
   margin: 18px 0 18px;
   color: rgba(255, 243, 204, 0.46);
-  font-family: var(--font-manuscript);
+  font-family: var(--font-auth-ritual);
   font-size: 11px;
-  font-style: italic;
-  font-weight: 300;
+  font-style: normal;
+  font-weight: 500;
   letter-spacing: 0.22em;
   text-shadow: 0 0 18px rgba(217, 194, 122, 0.12);
 }
@@ -2853,7 +2856,7 @@ button:disabled:hover {
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   border-bottom: 1px solid rgba(201, 169, 110, 0.1);
   color: rgba(255, 243, 204, 0.56);
-  font-family: var(--font-manuscript);
+  font-family: var(--font-auth-data);
   font-size: 13px;
   letter-spacing: 0.16em;
 }
@@ -2870,7 +2873,7 @@ button:disabled:hover {
 
 .auth-input-row label {
   color: rgba(255, 243, 204, 0.56);
-  font-family: var(--font-terminal);
+  font-family: var(--font-auth-data);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -2884,7 +2887,7 @@ button:disabled:hover {
   outline: 0;
   background: transparent;
   color: rgba(255, 255, 255, 0.9);
-  font-family: var(--font-terminal);
+  font-family: var(--font-auth-data);
   font-size: 18px;
   font-variant-numeric: tabular-nums;
   line-height: 28px;
@@ -2949,8 +2952,9 @@ button:disabled:hover {
 
 .auth-credential strong {
   color: rgba(255, 255, 255, 0.86);
-  font-family: var(--font-manuscript);
+  font-family: var(--font-auth-ritual);
   font-size: 18px;
+  font-weight: 700;
   letter-spacing: 0.3em;
   text-shadow: 0 0 24px rgba(255, 255, 255, 0.08);
 }
@@ -2976,8 +2980,9 @@ button:disabled:hover {
   border: 0;
   background: transparent;
   color: rgba(255, 243, 204, 0.38);
-  font-family: var(--font-terminal);
+  font-family: var(--font-auth-ritual);
   font-size: 10px;
+  font-weight: 700;
   letter-spacing: 0.2em;
   cursor: pointer;
 }
@@ -3010,16 +3015,18 @@ button:disabled:hover {
   display: block;
   margin-bottom: 2px;
   color: rgba(255, 243, 204, 0.46);
-  font-family: var(--font-manuscript);
+  font-family: var(--font-auth-ritual);
   font-size: 12px;
+  font-weight: 600;
   letter-spacing: 0.16em;
 }
 
 .auth-grade-row strong {
   color: rgba(255, 243, 204, 0.82);
-  font-family: var(--font-manuscript);
+  font-family: var(--font-auth-ritual);
   font-size: 24px;
-  font-style: italic;
+  font-style: normal;
+  font-weight: 700;
   letter-spacing: 0.16em;
   -webkit-text-stroke: 0;
   text-shadow:
@@ -3045,9 +3052,9 @@ button:disabled:hover {
   border-radius: 3px;
   background: rgba(201, 169, 110, 0.07);
   color: rgba(255, 243, 204, 0.9);
-  font-family: var(--font-engraved);
+  font-family: var(--font-auth-ritual);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 800;
   letter-spacing: 0.18em;
   text-shadow: 0 0 12px rgba(217, 194, 122, 0.18);
   box-shadow:
@@ -4025,6 +4032,8 @@ button:disabled:hover {
 
 .auth-mode-switch button {
   min-height: 38px;
+  font-family: var(--font-auth-ritual);
+  font-weight: 800;
 }
 
 .auth-mode-switch button.is-active {
