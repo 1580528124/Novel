@@ -4056,13 +4056,16 @@ button:disabled:hover {
   left: 50%;
   z-index: 1;
   pointer-events: none;
+  width: 100vw;
   color: rgba(255, 255, 255, 0.045);
   font-family: var(--font-engraved);
   font-size: clamp(120px, 18vw, 240px);
   font-weight: 800;
   letter-spacing: 0.32em;
+  text-align: center;
+  text-indent: 0.32em;
   text-shadow: 0 0 80px rgba(0, 180, 255, 0.035);
-  transform: translate(-45%, -53%) scaleX(1.08);
+  transform: translate(-50%, -53%) scaleX(1.08);
   user-select: none;
 }
 

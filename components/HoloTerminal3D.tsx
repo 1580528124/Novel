@@ -2560,7 +2560,8 @@ function HoloEnergyLines({ activeId }: { activeId: HoloModuleId }) {
         id: module.id,
         curve: mainCurve,
         tendrils,
-        color: module.color
+        color: module.color,
+        delay: moduleIndex * 0.11
       };
     });
   }, []);
@@ -2607,10 +2608,67 @@ function HoloEnergyLines({ activeId }: { activeId: HoloModuleId }) {
               />
             </mesh>
           )) : null}
+          <AlchemyRootPulse curve={line.curve} color={line.color} active={isActive} overview={isOverview} delay={line.delay} />
         </group>
         );
       })}
     </group>
+  );
+}
+
+function AlchemyRootPulse({
+  curve,
+  color,
+  active,
+  overview,
+  delay
+}: {
+  curve: THREE.CatmullRomCurve3;
+  color: string;
+  active: boolean;
+  overview: boolean;
+  delay: number;
+}) {
+  const pulseRefs = useRef<Array<THREE.Group | null>>([]);
+  const point = useMemo(() => new THREE.Vector3(), []);
+  const tangent = useMemo(() => new THREE.Vector3(), []);
+  const particleCount = active ? 3 : overview ? 2 : 0;
+
+  useFrame(({ clock }) => {
+    const cycle = overview ? 7.2 : 4.8;
+    pulseRefs.current.forEach((pulse, index) => {
+      if (!pulse) return;
+      const spacing = particleCount > 0 ? index / particleCount : 0;
+      const t = (clock.getElapsedTime() / cycle + delay + spacing) % 1;
+      curve.getPointAt(t, point);
+      curve.getTangentAt(t, tangent);
+      pulse.position.copy(point);
+      pulse.lookAt(point.clone().add(tangent));
+    });
+  });
+
+  const opacity = active ? 0.5 : overview ? 0.16 : 0;
+
+  return (
+    <>
+      {Array.from({ length: particleCount }, (_, index) => (
+        <group
+          key={index}
+          ref={(node) => {
+            pulseRefs.current[index] = node;
+          }}
+        >
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <capsuleGeometry args={[overview ? 0.015 : 0.024, overview ? 0.095 : 0.16, 4, 8]} />
+            <meshBasicMaterial color={color} transparent opacity={opacity * (index === 0 ? 1 : 0.72)} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[overview ? 0.028 : 0.044, 16, 8]} />
+            <meshBasicMaterial color="#fff1bc" transparent opacity={opacity * 0.34} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+        </group>
+      ))}
+    </>
   );
 }
 
