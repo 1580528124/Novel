@@ -36,6 +36,7 @@
     "@react-three/fiber": "^8.17.10",
     "@react-three/postprocessing": "^2.16.6",
     "@types/pg": "^8.20.4",
+    "bcryptjs": "^3.0.3",
     "earth-flyline": "^1.6.9",
     "next": "^14.2.23",
     "pg": "^8.22.0",

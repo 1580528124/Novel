@@ -6,9 +6,14 @@ export const AGENT_NAME_MIN_LENGTH = 1;
 export const AGENT_NAME_MAX_LENGTH = 12;
 
 const loginIdPattern = /^[a-zA-Z0-9_-]+$/;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function normalizeLoginIdInput(loginId: string) {
   return loginId.trim().toLowerCase();
+}
+
+export function normalizeEmailInput(email: string) {
+  return email.trim().toLowerCase();
 }
 
 export function validateLoginId(loginId: string): string | null {
@@ -23,6 +28,22 @@ export function validateLoginId(loginId: string): string | null {
   }
 
   return null;
+}
+
+export function validateEmail(email: string): string | null {
+  const normalized = normalizeEmailInput(email);
+
+  if (!normalized) return "请输入邮箱。";
+  if (normalized.length > 254) return "邮箱长度过长。";
+  if (!emailPattern.test(normalized)) return "请输入有效邮箱。";
+
+  return null;
+}
+
+export function validateLoginIdentifier(loginId: string): string | null {
+  const normalized = normalizeLoginIdInput(loginId);
+  if (!normalized) return "请输入邮箱或登录代号。";
+  return normalized.includes("@") ? validateEmail(normalized) : validateLoginId(normalized);
 }
 
 export function validatePasscode(passcode: string): string | null {
@@ -55,5 +76,5 @@ export function validateAgentName(agentName: string): string | null {
 }
 
 export function validateCredentials(loginId: string, passcode: string): string | null {
-  return validateLoginId(loginId) ?? validatePasscode(passcode);
+  return validateLoginIdentifier(loginId) ?? validatePasscode(passcode);
 }

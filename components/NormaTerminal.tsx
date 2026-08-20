@@ -29,6 +29,7 @@ import {
   loadRemoteSession,
   logoutRemoteAccount,
   registerRemoteAccount,
+  resendVerificationEmail,
   updateRemoteProfile,
   warmupRemoteAuth
 } from "@/lib/remoteAgentAuth";
@@ -40,11 +41,13 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
   const [connecting, setConnecting] = useState(false);
   const [focused, setFocused] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
-  const [authStep, setAuthStep] = useState<"credentials" | "dossier">("credentials");
+  const [authStep, setAuthStep] = useState<"credentials" | "dossier" | "verify-email">("credentials");
   const [loginId, setLoginId] = useState("");
   const [passcode, setPasscode] = useState("");
   const [passcodeConfirmation, setPasscodeConfirmation] = useState("");
   const [agentName, setAgentName] = useState("");
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
+  const [pendingVerificationUrl, setPendingVerificationUrl] = useState("");
   const [pendingAccount, setPendingAccount] = useState<AgentAccountSession | null>(null);
   const [authTransition, setAuthTransition] = useState<"idle" | "logging-in" | "registering">("idle");
   const [authMessage, setAuthMessage] = useState("");
@@ -59,6 +62,9 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
 
   useEffect(() => {
     void warmupRemoteAuth();
+    const params = new URLSearchParams(window.location.search);
+    const authError = params.get("auth_error");
+    if (authError) setFeedback(authError, "error");
   }, []);
 
   const authPending = authTransition !== "idle";
@@ -125,6 +131,10 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
     if (!result.ok) {
       setConnecting(false);
       setAuthTransition("idle");
+      if ("requiresEmailVerification" in result && result.requiresEmailVerification) {
+        setPendingVerificationEmail(loginId.trim().toLowerCase());
+        setAuthStep("verify-email");
+      }
       setFeedback(result.reason, "error");
       return;
     }
@@ -151,7 +161,6 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
 
     setAuthTransition("registering");
     setPendingAccount(null);
-    setConnecting(true);
     setAuthBusy(true);
     setFeedback("正在建立专员档案");
     const result = await (async () => {
@@ -170,15 +179,99 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
     setAuthBusy(false);
 
     if (!result.ok) {
-      setConnecting(false);
       setAuthTransition("idle");
       setFeedback(result.reason, "error");
       return;
     }
 
     setAuthTransition("idle");
-    setPendingAccount(result.account);
+    setPendingVerificationEmail(result.email ?? loginId.trim().toLowerCase());
+    setPendingVerificationUrl(result.devVerifyUrl ?? "");
+    setFeedback("验证邮件已发送，请完成邮箱验证。", "success");
+    setAuthStep("verify-email");
   };
+
+  const resendVerification = async () => {
+    if (authBusy) return;
+
+    const email = pendingVerificationEmail || loginId.trim().toLowerCase();
+    if (!email) {
+      setFeedback("请输入邮箱后再重发验证邮件。", "error");
+      return;
+    }
+
+    setAuthBusy(true);
+    setFeedback("正在重发验证邮件");
+    const result = await (async () => {
+      try {
+        return await resendVerificationEmail(email);
+      } catch {
+        return { ok: false as const, reason: "验证邮件重发失败，请确认认证服务仍在线。" };
+      }
+    })();
+    setAuthBusy(false);
+
+    if (!result.ok) {
+      setFeedback(result.reason, "error");
+      return;
+    }
+
+    if (result.devVerifyUrl) setPendingVerificationUrl(result.devVerifyUrl);
+    setFeedback(result.alreadyVerified ? "邮箱已完成验证，请返回身份校验。" : "新的验证邮件已发送。", "success");
+  };
+
+  if (authStep === "verify-email") {
+    return (
+      <main className={`norma-auth auth-ritual-screen is-auth-entering${focused ? " is-gold-glow" : ""}`}>
+        <DragonScaleBackground />
+        <div className="auth-eva-word" aria-hidden="true">
+          CASSELL
+        </div>
+        <div className="auth-corner-mark" aria-hidden="true">
+          <span>NORMA</span>
+          <small>卡塞尔全息终端</small>
+        </div>
+        <div className="auth-college-sigil" aria-hidden="true">
+          <span />
+        </div>
+        <section className="auth-identity-gate auth-dossier-gate">
+          <div className="auth-ritual-light" aria-hidden="true" />
+          <div className="auth-protocol">邮箱验证协议已发送</div>
+          <p className="auth-waiting">{pendingVerificationEmail || loginId.trim().toLowerCase()}</p>
+          <SGradeBadge variant="emblem" />
+          {authMessage ? <div className={`auth-feedback is-${authMessageTone}`}>{authMessage}</div> : null}
+          {pendingVerificationUrl ? (
+            <a className="auth-back-button" href={pendingVerificationUrl}>
+              打开验证链接
+            </a>
+          ) : null}
+          <div className="auth-grade-row">
+            <GoldenRippleButton disabled={authBusy} onClick={() => void resendVerification()}>
+              {authBusy ? "发送中" : "重发验证"}
+            </GoldenRippleButton>
+          </div>
+          <button
+            type="button"
+            className="auth-back-button"
+            onClick={() => {
+              setAuthMode("login");
+              setAuthStep("credentials");
+              setFeedback("");
+            }}
+          >
+            返回身份入口
+          </button>
+          <div className="auth-pending">MAIL PENDING · 等待验证</div>
+        </section>
+        <div className="auth-protocol-mark" aria-hidden="true">
+          CASSELL COLLEGE · TERMINAL PROTOCOL v4.2.7
+        </div>
+        <div className="auth-latin-mark" aria-hidden="true">
+          IN SOMNIS VERITAS
+        </div>
+      </main>
+    );
+  }
 
   if (authStep === "dossier") {
     return (
@@ -256,12 +349,13 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
       <section className="auth-identity-gate">
         <div className="auth-ritual-light" aria-hidden="true" />
         <div className="auth-protocol">身份验证协议已启动</div>
-        {authMode === "register" ? <p className="auth-waiting">登录代号需要 6-14 位。</p> : null}
+        {authMode === "register" ? <p className="auth-waiting">请使用可接收验证邮件的邮箱。</p> : null}
         <SGradeBadge variant="emblem" />
         <div className="auth-credential auth-input-row">
-          <label htmlFor="login-id">代号</label>
+          <label htmlFor="login-id">邮箱</label>
           <input
             id="login-id"
+            type={authMode === "register" || loginId.includes("@") ? "email" : "text"}
             value={loginId}
             onChange={(event) => setLoginId(event.target.value)}
             onFocus={() => setFocused(true)}
@@ -308,6 +402,7 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
             onClick={() => {
               setAuthMode("login");
               setPasscodeConfirmation("");
+              setAuthStep("credentials");
               setFeedback("");
             }}
           >
@@ -319,6 +414,7 @@ function AuthScreen({ onEnter }: { onEnter: (account: AgentAccountSession) => vo
             onClick={() => {
               setAuthMode("register");
               setPasscodeConfirmation("");
+              setAuthStep("credentials");
               setFeedback("");
             }}
           >

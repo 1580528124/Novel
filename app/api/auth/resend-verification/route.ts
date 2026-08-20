@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { registerDbAccount } from "@/lib/server/normaDb";
+import { resendDbEmailVerification } from "@/lib/server/normaDb";
 import { sendVerificationEmail } from "@/lib/server/emailDelivery";
 
 export const dynamic = "force-dynamic";
@@ -8,12 +8,12 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       loginId?: string;
-      passcode?: string;
-      agentName?: string;
+      email?: string;
     };
+    const email = body.email ?? body.loginId ?? "";
+    const result = await resendDbEmailVerification(email);
 
-    const result = await registerDbAccount(body.loginId ?? "", body.passcode ?? "", body.agentName ?? "");
-    if (result.ok) {
+    if (result.ok && result.sent) {
       const baseUrl = process.env.EMAIL_VERIFY_BASE_URL ?? new URL("/api/auth/verify-email", request.url).toString();
       const verifyUrl = `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}token=${encodeURIComponent(result.verification.token)}`;
 
@@ -22,20 +22,18 @@ export async function POST(request: Request) {
         verifyUrl,
         agentName: result.account.profile.name
       });
+    }
 
-      return NextResponse.json({
-        ok: true,
-        requiresEmailVerification: true,
-        email: result.account.email,
-        expiresAt: result.verification.expiresAt,
-        devVerifyUrl: (process.env.EMAIL_DELIVERY_MODE ?? "console") === "console" ? verifyUrl : undefined
-      });
+    if (result.ok && result.sent && (process.env.EMAIL_DELIVERY_MODE ?? "console") === "console") {
+      const baseUrl = process.env.EMAIL_VERIFY_BASE_URL ?? new URL("/api/auth/verify-email", request.url).toString();
+      const verifyUrl = `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}token=${encodeURIComponent(result.verification.token)}`;
+      return NextResponse.json({ ok: true, sent: true, devVerifyUrl: verifyUrl });
     }
 
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, reason: error instanceof Error ? error.message : "注册接口异常。" },
+      { ok: false, reason: error instanceof Error ? error.message : "验证邮件重发接口异常。" },
       { status: 500 }
     );
   }

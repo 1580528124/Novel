@@ -48,6 +48,8 @@ export type AgentProfile = {
 export type AgentAccountSession = {
   accountId: string;
   loginId: string;
+  email?: string | null;
+  emailVerifiedAt?: string | null;
   profile: AgentProfile;
   createdAt: string;
   lastLoginAt: string;
